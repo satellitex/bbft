@@ -1,0 +1,94 @@
+syntax = "proto3";
+package shiori;
+
+import "primitive.proto";
+import "transaction.proto";
+import "block.proto";
+
+
+/**
+ * ProposalTx はリーダーによる署名を得てProposalQueueに入れて良いとされるTx
+ **/
+message ProposalTx {
+    Transaction tx = 1;
+    Signature signature = 2;
+}
+
+/**
+ * VoteMessage の構造
+ * blockHash : Block の Hash = ( header の Hash + transactions の累積ハッシュ + signature )
+ * signature : blockHash をリーダーの秘密鍵で署名したもの。
+ **/
+
+message VoteMessage {
+    bytes blockHash = 1;
+    Signature signature = 2;
+}
+
+// Error は GRPC Error Code で返す
+message ConsensusResponse {}
+message CommitResponse {}
+
+/**
+ * ConsensusGate は合意形成に使用する rpc を定義する。
+ * これを使用するのは合意形成に参加するPeerのみである。
+ **/
+service ConsensusGate {
+    /**
+     * Propagate は Client かあら受け取った Transaction を自分以外の Peer に送信する。
+     * ProposalTransaction には自身の署名をつける。
+     *
+     * InvalidArgument (code = 3) : One of following conditions:
+     *  3 ) 署名が異なる場合
+     * PermissionDenied (code = 7) : One of following conditions:
+     *  1 ) TODO : 署名の主がPeerでない場合
+     **/
+    rpc Propagete (ProposalTx) returns (ConsensusResponse);
+
+    /**
+     * Propose は現在のRoundにおけるリーダーが新しいBlockの候補を提案することである。
+     * 言い換えると、リーダーに選ばれた Peer が自分以外の Height+1 の Block を送信する。
+     *
+     * InvalidArgument (code = 3) : One of following conditions:
+     *  1 ) Height が異なる場合
+     *  2 ) CreatedTime がRoundが示す時間より前だった場合、また次のRoundが示す時間以降だった場合
+     *  3 ) CreatedTime が現在時刻より後だった場合
+     *  4 ) 署名が異なる場合
+     * PermissionDenied (code = 7) : One of following conditions:
+     *  1 ) 署名の主が現在のRoundのリーダーでない場合
+     * FailedPrecondition (code = 9) : One of following conditions:
+     *  1 ) 既に同じ Block を受け取っていた場合
+     **/
+    rpc Propose (Block) returns (ConsensusResponse);
+
+    /**
+     * Vote は Propose で来たBlockが有効であるとき、
+     * VoteMessage に Block の Hash と自分の署名を加えて自分以外の Peer に送信する。
+     * 無効であるとき、VoteMessage に Block の blockHash = Hash + RejectMessage として
+     * 自分以外の Peer に送信する。
+     *
+     * InvalidArgument (code = 3) : One of following conditions:
+     *  1 ) 署名が異なる場合
+     * PermissionDenied (code = 7) : One of following conditions:
+     *  1 ) 署名の主が合意形成に参加している Peer でない場合
+     * FailedPrecondition (code = 9) : One of following conditions:
+     *  1 ) 既に同じ Vote を受け取っていた場合
+     **/
+    rpc Vote (VoteMessage) returns (VoteMessage);
+
+    /**
+     * PreCommit は ceil(2/3) 以上の有効な Vote を受け取った時、
+     * VoteMessage に有効な Block の Hash と自分の署名を加えて自分以外の Peer に送信する。
+     *
+     * ceil(2/3)以上の PreCommit を受け取った Peer は CommitPhase に移行する。
+     *
+     * InvalidArgument (code = 3) : One of following conditions:
+     *  1 ) 署名が異なる場合
+     * PermissionDenied (code = 7) : One of following conditions:
+     *  1 ) 署名の主が合意形成に参加している Peer でない場合
+     * FailedPrecondition (code = 9) : One of following conditions:
+     *  1 ) 既に同じ Vote を受け取っていた場合
+     **/
+    rpc PreCommit (VoteMessage) returns (VoteMessage);
+}
+

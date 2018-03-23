@@ -1,0 +1,16 @@
+syntax = "proto3";
+package shiori;
+
+import "primitive.proto";
+
+/**
+ * Transaction は Client が送信する取引の内容を記述したもの。
+ * 中身は TODO
+ **/
+message Transaction {
+    message Payload {
+        string todo = 111;
+    }
+    Payload payload = 1;
+    repeated Signature signature = 2;
+}

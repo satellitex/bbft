@@ -1,0 +1,27 @@
+syntax = "proto3";
+package shiori;
+
+import "primitive.proto";
+import "transaction.proto";
+
+
+/**
+ * Block の構造
+ * height : 現在のBlockのHeight+1
+ * transactions : Transaction の集合（列)
+ * createdTime : Blockを生成した時間(リーダーがProposalを生成した時間であり、Commitされた時間ではない)
+ * preBlockHash : 現在の Block の Hash
+ * round : 現在のラウンド
+ * signature : 現在のラウンドにおけるリーダーのSignature (hash = headerのHash + transactionsの累積Hash)
+ **/
+message Block {
+    message Header {
+        int64 Height = 1;
+        bytes preBlockHash = 2;
+        int64 round = 3;
+        int64 createdTime = 4;
+    }
+    Header header = 1;
+    repeated Transaction transactions = 2;
+    Signature signature = 3;
+}

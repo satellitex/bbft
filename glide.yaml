@@ -1,0 +1,18 @@
+package: github.com/satellitex/bbft
+import:
+- package: github.com/golang/protobuf
+  subpackages:
+  - proto
+  - ptypes/empty
+- package: github.com/grpc-ecosystem/go-grpc-middleware
+  subpackages:
+  - auth
+  - logging/zap
+  - recovery
+  - tags
+  - util/metautils
+  - validator
+- package: google.golang.org/grpc
+  subpackages:
+  - codes
+  - status

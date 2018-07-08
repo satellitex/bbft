@@ -1,0 +1,23 @@
+hash: 6c223c16f351eb2713f6210d75d3183166fb99813baa2b2ee4a130505ee2c414
+updated: 2018-07-08T16:17:19.658736+09:00
+imports:
+- name: github.com/golang/protobuf
+  version: 1325a051a2753cd67556b182843b1b693d0854cd
+  subpackages:
+  - proto
+  - ptypes/empty
+- name: github.com/grpc-ecosystem/go-grpc-middleware
+  version: e9c5d9645c437ab1b204cff969a2c0fb16cd4276
+  subpackages:
+  - auth
+  - logging/zap
+  - recovery
+  - tags
+  - util/metautils
+  - validator
+- name: google.golang.org/grpc
+  version: f3361fda2fe0734510c562684480f18ebb63ac33
+  subpackages:
+  - codes
+  - status
+testImports: []

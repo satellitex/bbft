@@ -1,5 +1,5 @@
 syntax = "proto3";
-package shiori;
+package bbft;
 
 import "primitive.proto";
 import "transaction.proto";

@@ -1,1 +1,1 @@
-# shiori-schema
+# bbft-schema file

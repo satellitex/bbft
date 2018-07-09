@@ -1,3 +1,4 @@
 #!/bin/bash -e
-SRC=$(git rev-parse --show-toplevel)/proto
-protoc --proto_path=${GOPATH}/src/github.com/google/protobuf/src --proto_path=${SRC} --go_out=plugins=grpc:${SRC} --govalidators_out=${SRC} ${SRC}/*.proto
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+SRC=$PROJECT_ROOT/proto
+protoc --proto_path=${SRC} --go_out=plugins=grpc:${SRC} ${SRC}/*.proto

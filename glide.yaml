@@ -4,6 +4,7 @@ import:
   subpackages:
   - proto
   - ptypes/empty
+  - protobuf-gen-go
 - package: github.com/grpc-ecosystem/go-grpc-middleware
   subpackages:
   - auth

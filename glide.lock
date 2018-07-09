@@ -1,10 +1,11 @@
-hash: 6c223c16f351eb2713f6210d75d3183166fb99813baa2b2ee4a130505ee2c414
-updated: 2018-07-08T16:17:19.658736+09:00
+hash: 0b2b59b09f36bf55d91093bc110dd30ab44d2a21c54d96f8a462bd67f7d9ce2f
+updated: 2018-07-08T16:29:58.157122+09:00
 imports:
 - name: github.com/golang/protobuf
   version: 1325a051a2753cd67556b182843b1b693d0854cd
   subpackages:
   - proto
+  - protobuf-gen-go
   - ptypes/empty
 - name: github.com/grpc-ecosystem/go-grpc-middleware
   version: e9c5d9645c437ab1b204cff969a2c0fb16cd4276

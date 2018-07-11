@@ -18,10 +18,20 @@ message Block {
     message Header {
         int64 Height = 1;
         bytes preBlockHash = 2;
-        int64 round = 3;
-        int64 createdTime = 4;
+        int64 createdTime = 3;
     }
     Header header = 1;
     repeated Transaction transactions = 2;
     Signature signature = 3;
+}
+
+/**
+ * Proposal の構造
+ * round と Block を分離しないと、異なるroundで同一のBlockを提案した際の整合性が取れないため
+ * Block : Block
+ * round : 現在のラウンド
+ **/
+message Proposal {
+    Block block = 1;
+    int64 round = 2;
 }

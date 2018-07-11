@@ -16,3 +16,7 @@ type BlockHeader struct {
 func (b *Block) GetHeader() proto.BlockHeader {
 	return &BlockHeader{b.Header}
 }
+
+type Propsoal struct {
+	*bbft.Proposal
+}

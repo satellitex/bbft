@@ -9,6 +9,9 @@ type Block interface {
 type BlockHeader interface {
 	GetHeight() int64
 	GetPreBlockHash() []byte
-	GetRound() int64
 	GetCreatedTime() int64
+}
+
+type Proposal interface {
+	GetRound() int64
 }

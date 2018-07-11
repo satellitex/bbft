@@ -1,4 +1,4 @@
-package proto
+package model
 
 type ProposalTx interface {
 	GetTransaction() Transaction

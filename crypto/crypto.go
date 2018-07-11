@@ -14,17 +14,20 @@ var (
 	ErrMarshalProtocolBuffer = errors.New("failed to marshal protocol buffer")
 )
 
+const (
+	HashSize = sha256.Size
+)
+
+type Hash [HashSize]byte
+type HashPtr *Hash
+
 // CalcSha256 calculates a SHA3-256 hash.
-func CalcSha256(b []byte) []byte {
-	hash := make([]byte, 0, 32)
-	sha := sha256.New()
-	// Note that Write method of hash.Hash interface never return an error.
-	// See the documentation of hash.Hash.
-	sha.Write(b)
-	return sha.Sum(hash)
+func CalcSha256(b []byte) HashPtr {
+	var hash Hash = sha256.Sum256(b)
+	return &hash
 }
 
-func CalcHashFromProto(msg proto.Message) ([]byte, error) {
+func CalcHashFromProto(msg proto.Message) (HashPtr, error) {
 	pb, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, errors.Wrap(ErrMarshalProtocolBuffer, err.Error())
@@ -37,7 +40,7 @@ func VerifyFromProto(pubkey []byte, msg proto.Message, signature []byte) bool {
 	if err != nil {
 		return false
 	}
-	return ed25519.Verify(pubkey, hash, signature)
+	return ed25519.Verify(pubkey, (*hash)[:], signature)
 }
 
 func NewKeyPair() (ed25519.PublicKey, ed25519.PrivateKey) {

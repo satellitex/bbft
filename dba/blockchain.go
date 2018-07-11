@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/crypto"
-	"github.com/satellitex/bbft/model/proto"
+	"github.com/satellitex/bbft/model"
 	"sync"
 )
 
@@ -21,7 +21,7 @@ type BlockChainSQL struct {
 	db *sql.DB
 }
 
-type BlockChainMock struct {
+type BlockChainOnMemory struct {
 	db        map[int64]model.Block
 	hashIndex map[crypto.Hash]int64
 	counter   int64
@@ -40,8 +40,8 @@ func (b *BlockChainSQL) Push(block model.Block) error {
 	return nil
 }
 
-func NewBlockChainMock() BlockChain {
-	return &BlockChainMock{
+func NewBlockChainOnMemory() BlockChain {
+	return &BlockChainOnMemory{
 		make(map[int64]model.Block),
 		make(map[crypto.Hash]int64),
 		0,
@@ -49,7 +49,7 @@ func NewBlockChainMock() BlockChain {
 	}
 }
 
-func (b *BlockChainMock) getIndex(block model.Block) (int64, bool) {
+func (b *BlockChainOnMemory) getIndex(block model.Block) (int64, bool) {
 	hashPtr, err := block.GetHash()
 	if err != nil {
 		return -1, false
@@ -61,7 +61,7 @@ func (b *BlockChainMock) getIndex(block model.Block) (int64, bool) {
 	return -1, false
 }
 
-func (b *BlockChainMock) Top() (model.Block, bool) {
+func (b *BlockChainOnMemory) Top() (model.Block, bool) {
 	defer b.m.Unlock()
 	b.m.Lock()
 
@@ -72,7 +72,7 @@ func (b *BlockChainMock) Top() (model.Block, bool) {
 	return res, true
 }
 
-func (b *BlockChainMock) Push(block model.Block) error {
+func (b *BlockChainOnMemory) Push(block model.Block) error {
 	defer b.m.Unlock()
 	b.m.Lock()
 

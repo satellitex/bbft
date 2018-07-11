@@ -1,29 +1,28 @@
-package consensus
+package usecase
 
 import (
-	"github.com/satellitex/bbft/dba/lock"
-	"github.com/satellitex/bbft/dba/queue"
+	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 )
 
 type ConsensusReceiver interface {
 	Propagate(ptx model.ProposalTx) error
-	Proposal(proposal model.Proposal) error
+	Propose(proposal model.Proposal) error
 	Vote(vote model.VoteMessage) error
 	PreCommit(preCommit model.VoteMessage) error
 }
 
 type ConsensusReceieverUsecase struct {
-	queue  queue.ProposalTxQueue
-	lock   lock.Lock
+	queue  dba.ProposalTxQueue
+	lock   dba.Lock
 	sender model.ConsensusSender
 }
 
-func (c *ConsensusReceieverUsecase) Propagate(ptx model.ProposalTx) error {
+func (c *ConsensusReceieverUsecase) Propagate(proposalTx model.ProposalTx) error {
 	return nil
 }
 
-func (c *ConsensusReceieverUsecase) Proposal(proposal model.Proposal) error {
+func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	return nil
 }
 

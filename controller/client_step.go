@@ -3,12 +3,12 @@ package controller
 import (
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/proto"
-	"github.com/satellitex/bbft/usecase/client"
+	"github.com/satellitex/bbft/usecase"
 	"golang.org/x/net/context"
 )
 
 type ClientGateController struct {
-	receiver client.ClientGateReceiver
+	receiver usecase.ClientGateReceiver
 }
 
 func (c *ClientGateController) Write(_ context.Context, tx *bbft.Transaction) (*bbft.TxResponse, error) {

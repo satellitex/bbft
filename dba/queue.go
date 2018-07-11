@@ -1,4 +1,4 @@
-package queue
+package dba
 
 import (
 	"github.com/satellitex/bbft/model"

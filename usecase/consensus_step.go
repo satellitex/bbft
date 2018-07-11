@@ -1,10 +1,8 @@
-package consensus
+package usecase
 
 import (
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/dba"
-	"github.com/satellitex/bbft/dba/lock"
-	"github.com/satellitex/bbft/dba/queue"
 	"github.com/satellitex/bbft/model"
 )
 
@@ -17,8 +15,8 @@ type ConsensusStep interface {
 
 type ConsensusStepUsecase struct {
 	bc                 dba.BlockChain
-	lock               lock.Lock
-	queue              queue.ProposalTxQueue
+	lock               dba.Lock
+	queue              dba.ProposalTxQueue
 	sender             model.ConsensusSender
 	statelessValidator model.StatelessValidator
 	statefulValidator  model.StatefulValidator

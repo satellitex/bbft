@@ -1,4 +1,4 @@
-package client
+package usecase
 
 import (
 	"github.com/satellitex/bbft/model"

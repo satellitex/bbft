@@ -3,12 +3,12 @@ package controller
 import (
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/proto"
-	"github.com/satellitex/bbft/usecase/consensus"
+	"github.com/satellitex/bbft/usecase"
 	"golang.org/x/net/context"
 )
 
 type ConsensusController struct {
-	receiver consensus.ConsensusReceiver
+	receiver usecase.ConsensusReceiver
 }
 
 func (c *ConsensusController) Propagate(_ context.Context, ptx *bbft.ProposalTx) (*bbft.ConsensusResponse, error) {
@@ -22,7 +22,7 @@ func (c *ConsensusController) Propagate(_ context.Context, ptx *bbft.ProposalTx)
 
 func (c *ConsensusController) Propose(_ context.Context, p *bbft.Proposal) (*bbft.ConsensusResponse, error) {
 	proposal := &convertor.Proposal{p}
-	err := c.receiver.Proposal(proposal)
+	err := c.receiver.Propose(proposal)
 	if err != nil {
 		return nil, err
 	}

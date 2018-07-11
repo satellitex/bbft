@@ -1,4 +1,4 @@
-package lock
+package dba
 
 import (
 	"github.com/satellitex/bbft/model"

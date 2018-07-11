@@ -14,7 +14,7 @@ type LockOnMemory struct {
 	mutex *sync.Mutex
 }
 
-func NewLock() Lock {
+func NewLockOnMemory() Lock {
 	return &LockOnMemory{new(sync.Mutex)}
 }
 

@@ -5,7 +5,7 @@ type Block interface {
 	GetTransactions() []Transaction
 	GetSignature() Signature
 	GetHash() ([]byte, error)
-	Verify() error
+	Verify() bool
 }
 
 type BlockHeader interface {

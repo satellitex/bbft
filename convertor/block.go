@@ -1,7 +1,6 @@
 package convertor
 
 import (
-	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 )

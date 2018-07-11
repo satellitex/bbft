@@ -14,7 +14,7 @@ type ProposalTxQueueOnMemory struct {
 	mutex *sync.Mutex
 }
 
-func NewProposalTxQueue() ProposalTxQueue {
+func NewProposalTxQueueOnMemory() ProposalTxQueue {
 	return &ProposalTxQueueOnMemory{
 		new(sync.Mutex),
 	}

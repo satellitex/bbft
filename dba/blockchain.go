@@ -3,7 +3,6 @@ package dba
 import (
 	"database/sql"
 	"github.com/pkg/errors"
-	"github.com/satellitex/bbft/crypto"
 	"github.com/satellitex/bbft/model"
 	"sync"
 )
@@ -23,7 +22,7 @@ type BlockChainSQL struct {
 
 type BlockChainOnMemory struct {
 	db        map[int64]model.Block
-	hashIndex map[crypto.Hash]int64
+	hashIndex map[string]int64
 	counter   int64
 	m         *sync.Mutex
 }
@@ -43,18 +42,18 @@ func (b *BlockChainSQL) Push(block model.Block) error {
 func NewBlockChainOnMemory() BlockChain {
 	return &BlockChainOnMemory{
 		make(map[int64]model.Block),
-		make(map[crypto.Hash]int64),
+		make(map[string]int64),
 		0,
 		new(sync.Mutex),
 	}
 }
 
 func (b *BlockChainOnMemory) getIndex(block model.Block) (int64, bool) {
-	hashPtr, err := block.GetHash()
+	hash, err := block.GetHash()
 	if err != nil {
 		return -1, false
 	}
-	id, ok := b.hashIndex[*hashPtr]
+	id, ok := b.hashIndex[string(hash)]
 	if ok {
 		return id, true
 	}
@@ -77,11 +76,11 @@ func (b *BlockChainOnMemory) Push(block model.Block) error {
 	b.m.Lock()
 
 	if _, ok := b.getIndex(block); !ok {
-		hashPtr, err := block.GetHash()
+		hash, err := block.GetHash()
 		if err != nil {
 			return errors.Wrapf(ErrBlockChainPush, err.Error())
 		}
-		b.hashIndex[*hashPtr] = b.counter
+		b.hashIndex[string(hash)] = b.counter
 		b.db[b.counter] = block
 		b.counter += 1
 	} else {

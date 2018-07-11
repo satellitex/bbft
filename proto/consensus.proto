@@ -42,7 +42,7 @@ service ConsensusGate {
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) TODO : 署名の主がPeerでない場合
      **/
-    rpc Propagete (ProposalTx) returns (ConsensusResponse);
+    rpc Propagate (ProposalTx) returns (ConsensusResponse);
 
     /**
      * Propose は現在のRoundにおけるリーダーが新しいBlockの候補を提案することである。

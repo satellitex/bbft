@@ -19,7 +19,7 @@ type ConsensusReceieverUsecase struct {
 	sender model.ConsensusSender
 }
 
-func (c *ConsensusReceieverUsecase) Propagete(ptx model.Transaction) error {
+func (c *ConsensusReceieverUsecase) Propagate(ptx model.ProposalTx) error {
 	return nil
 }
 

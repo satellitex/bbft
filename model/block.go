@@ -16,5 +16,6 @@ type BlockHeader interface {
 }
 
 type Proposal interface {
+	GetBlock() Block
 	GetRound() int64
 }

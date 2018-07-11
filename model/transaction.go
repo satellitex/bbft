@@ -1,11 +1,10 @@
 package model
 
-import "github.com/satellitex/bbft/crypto"
-
 type Transaction interface {
 	GetPaylaod() TransactionPayload
 	GetSignatures() []Signature
-	GetHash() (crypto.HashPtr, error)
+	GetHash() ([]byte, error)
+	Verify() error
 }
 
 type TransactionPayload interface {

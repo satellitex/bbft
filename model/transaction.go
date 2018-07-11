@@ -1,10 +1,10 @@
 package model
 
 type Transaction interface {
-	GetPaylaod() TransactionPayload
+	GetPayload() TransactionPayload
 	GetSignatures() []Signature
 	GetHash() ([]byte, error)
-	Verify() error
+	Verify() bool
 }
 
 type TransactionPayload interface {

@@ -27,9 +27,6 @@ message VoteMessage {
 
 // Error は GRPC Error Code で返す
 message ConsensusResponse {}
-message CommitResponse {}
-message VoteResponse {}
-message PreCommitResponse {}
 
 /**
  * ConsensusGate は合意形成に使用する rpc を定義する。
@@ -76,7 +73,7 @@ service ConsensusGate {
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      **/
-    rpc Vote (VoteMessage) returns (VoteResponse);
+    rpc Vote (VoteMessage) returns (ConsensusResponse);
 
     /**
      * PreCommit は ceil(2/3) 以上の有効な Vote を受け取った時、
@@ -91,6 +88,6 @@ service ConsensusGate {
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      **/
-    rpc PreCommit (VoteMessage) returns (PreCommitResponse);
+    rpc PreCommit (VoteMessage) returns (ConsensusResponse);
 }
 

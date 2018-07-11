@@ -1,6 +1,6 @@
 package model
 
 type Signature interface {
-	GetPubKey() []byte
+	GetPubkey() []byte
 	GetSignature() []byte
 }

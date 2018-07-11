@@ -7,19 +7,26 @@ import (
 
 type Transaction struct {
 	*bbft.Transaction
-	c model.Cryptor
 }
 
 type TransactionPayload struct {
 	*bbft.Transaction_Payload
 }
 
-func (t *Transaction) GetHash() ([]byte, error) {
-	return CalcHashFromProto(t.Payload, t.c)
-}
-
 func (t *Transaction) GetPayload() model.TransactionPayload {
 	return &TransactionPayload{t.Payload}
+}
+
+func (t *Transaction) GetHash() ([]byte, error) {
+	return CalcHashFromProto(t.Payload)
+}
+
+func (t *Transaction) GetSignatures() []model.Signature {
+	ret := make([]model.Signature, len(t.Signatures))
+	for i, sig := range t.Signatures {
+		ret[i] = Signature{sig}
+	}
+	return ret
 }
 
 func (t *Transaction) Verify() bool {
@@ -28,7 +35,7 @@ func (t *Transaction) Verify() bool {
 		return false
 	}
 	for _, signature := range t.Signatures {
-		if t.c.Verify(signature.Pubkey, hash, signature.Signature) == false {
+		if Verify(signature.Pubkey, hash, signature.Signature) == false {
 			return false
 		}
 	}

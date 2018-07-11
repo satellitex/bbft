@@ -17,3 +17,6 @@ import:
   subpackages:
   - codes
   - status
+- package: github.com/kelseyhightower/envconfig
+- package: github.com/pkg/errors
+- package: golang.org/x/crypto/ed25519

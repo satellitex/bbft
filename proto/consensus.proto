@@ -27,7 +27,6 @@ message VoteMessage {
 
 // Error は GRPC Error Code で返す
 message ConsensusResponse {}
-message CommitResponse {}
 
 /**
  * ConsensusGate は合意形成に使用する rpc を定義する。
@@ -35,7 +34,7 @@ message CommitResponse {}
  **/
 service ConsensusGate {
     /**
-     * Propagate は Client かあら受け取った Transaction を自分以外の Peer に送信する。
+     * Propagate は Client から受け取った Transaction を自分以外の Peer に送信する。
      * ProposalTransaction には自身の署名をつける。
      *
      * InvalidArgument (code = 3) : One of following conditions:
@@ -43,7 +42,7 @@ service ConsensusGate {
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) TODO : 署名の主がPeerでない場合
      **/
-    rpc Propagete (ProposalTx) returns (ConsensusResponse);
+    rpc Propagate (ProposalTx) returns (ConsensusResponse);
 
     /**
      * Propose は現在のRoundにおけるリーダーが新しいBlockの候補を提案することである。
@@ -59,7 +58,7 @@ service ConsensusGate {
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Block を受け取っていた場合
      **/
-    rpc Propose (Block) returns (ConsensusResponse);
+    rpc Propose (Proposal) returns (ConsensusResponse);
 
     /**
      * Vote は Propose で来たBlockが有効であるとき、
@@ -74,7 +73,7 @@ service ConsensusGate {
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      **/
-    rpc Vote (VoteMessage) returns (VoteMessage);
+    rpc Vote (VoteMessage) returns (ConsensusResponse);
 
     /**
      * PreCommit は ceil(2/3) 以上の有効な Vote を受け取った時、
@@ -89,6 +88,6 @@ service ConsensusGate {
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      **/
-    rpc PreCommit (VoteMessage) returns (VoteMessage);
+    rpc PreCommit (VoteMessage) returns (ConsensusResponse);
 }
 

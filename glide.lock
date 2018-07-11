@@ -1,12 +1,16 @@
-hash: 0b2b59b09f36bf55d91093bc110dd30ab44d2a21c54d96f8a462bd67f7d9ce2f
-updated: 2018-07-08T16:29:58.157122+09:00
+hash: e7f4f84ad00fabb9e2f7832f141663d4d87168c21941445e6e3352b8938cd7dd
+updated: 2018-07-11T15:26:43.583025+09:00
 imports:
 - name: github.com/golang/protobuf
   version: 1325a051a2753cd67556b182843b1b693d0854cd
   subpackages:
   - proto
   - protobuf-gen-go
+  - ptypes
+  - ptypes/any
+  - ptypes/duration
   - ptypes/empty
+  - ptypes/timestamp
 - name: github.com/grpc-ecosystem/go-grpc-middleware
   version: e9c5d9645c437ab1b204cff969a2c0fb16cd4276
   subpackages:
@@ -16,9 +20,59 @@ imports:
   - tags
   - util/metautils
   - validator
+- name: github.com/mattn/go-sqlite3
+  version: 3aefd9f0a162514f66d0e4ceda3edc44e66b502e
+- name: golang.org/x/net
+  version: 039a4258aec0ad3c79b905677cceeab13b296a77
+  subpackages:
+  - context
+  - http/httpguts
+  - http2
+  - http2/hpack
+  - idna
+  - internal/timeseries
+  - trace
+- name: golang.org/x/sys
+  version: 1b2967e3c290b7c545b3db0deeda16e9be4f98a2
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: 0605a8320aceb4207a5fb3521281e17ec2075476
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
+- name: google.golang.org/genproto
+  version: e92b116572682a5b432ddd840aeaba2a559eeff1
+  subpackages:
+  - googleapis/rpc/status
 - name: google.golang.org/grpc
   version: f3361fda2fe0734510c562684480f18ebb63ac33
   subpackages:
+  - balancer
+  - balancer/base
+  - balancer/roundrobin
   - codes
+  - connectivity
+  - credentials
+  - encoding
+  - encoding/proto
+  - grpclog
+  - internal
+  - internal/backoff
+  - internal/channelz
+  - internal/envconfig
+  - internal/grpcrand
+  - keepalive
+  - metadata
+  - naming
+  - peer
+  - resolver
+  - resolver/dns
+  - resolver/passthrough
+  - stats
   - status
+  - tap
+  - transport
 testImports: []

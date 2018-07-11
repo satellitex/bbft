@@ -1,7 +1,8 @@
 package convertor
 
 import (
-	"github.com/satellitex/bbft/model/proto"
+	"github.com/satellitex/bbft/crypto"
+	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 )
 
@@ -13,7 +14,11 @@ type TransactionPayload struct {
 	*bbft.Transaction_Payload
 }
 
-func (t *Transaction) GetPayload() proto.TransactionPayload {
+func (t *Transaction) GetHash() (crypto.HashPtr, error) {
+	return crypto.CalcHashFromProto(t)
+}
+
+func (t *Transaction) GetPayload() model.TransactionPayload {
 	return &TransactionPayload{t.Payload}
 }
 

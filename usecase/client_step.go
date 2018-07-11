@@ -15,7 +15,3 @@ type ClientGateReceiverUsecase struct {
 func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {
 	return nil
 }
-
-func (c *ClientGateReceiverUsecase) propagate() error {
-	return nil
-}

@@ -8,7 +8,7 @@ import (
 
 type ConsensusStep interface {
 	Run()
-	Proposal() error
+	Propose() error
 	Vote() error
 	PreCommit() error
 }
@@ -32,7 +32,7 @@ var (
 func (c *ConsensusStepUsecase) Run() {
 	for {
 		for {
-			c.Proposal()
+			c.Propose()
 			c.Vote()
 			c.PreCommit()
 		}
@@ -40,7 +40,7 @@ func (c *ConsensusStepUsecase) Run() {
 	}
 }
 
-func (c *ConsensusStepUsecase) Proposal() error {
+func (c *ConsensusStepUsecase) Propose() error {
 	return nil
 }
 

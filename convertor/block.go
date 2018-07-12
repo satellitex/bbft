@@ -34,8 +34,19 @@ func (b *Block) GetSignature() model.Signature {
 }
 
 func (b *Block) GetHash() ([]byte, error) {
-	// TODO TransactionとHeraderを分割してHashする
-	return CalcHashFromProto(b)
+	//TODO tx.GetHash() は payload の hash なので signature を含んでない,毎回 sha256計算したほうが一気にやるよりはやそう？
+	result, err := b.GetHeader().GetHash()
+	if err != nil {
+		return nil, err
+	}
+	for _, tx := range b.GetTransactions() {
+		hash, err := tx.GetHash()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, hash...)
+	}
+	return CalcHash(result), nil
 }
 
 func (b *Block) Verify() bool {

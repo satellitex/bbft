@@ -1,13 +1,13 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rnd "math/rand"
 	"strconv"
 	"testing"
-	"github.com/pkg/errors"
 )
 
 func randomTx() model.Transaction {
@@ -112,7 +112,6 @@ func TestBlockFactory(t *testing.T) {
 			nil,
 			randomSig(),
 		},
-
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			block, err := NewModelFactory().NewBlock(c.expectedHeight, c.expectedHash, c.expectedCreatedTime, c.expectedTxs, c.expectedSig)
@@ -189,8 +188,8 @@ func TestVoteMessageFactory(t *testing.T) {
 	for _, c := range []struct {
 		name          string
 		expectedError error
-		expectedHash []byte
-		expectedSig	model.Signature
+		expectedHash  []byte
+		expectedSig   model.Signature
 	}{
 		{
 			"case 1",
@@ -244,3 +243,53 @@ func TestVoteMessageFactory(t *testing.T) {
 
 }
 
+func TestSignatureFactory(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		expectedPub []byte
+		expectedSig []byte
+	}{
+		{
+			"case 1",
+			randomByte(),
+			randomByte(),
+		},
+		{
+			"case 2",
+			randomByte(),
+			randomByte(),
+		},
+		{
+			"case 3",
+			randomByte(),
+			randomByte(),
+		},
+		{
+			"case 4",
+			randomByte(),
+			randomByte(),
+		},
+		{
+			"case 5",
+			randomByte(),
+			randomByte(),
+		},
+		{
+			"pub nil case no problem",
+			nil,
+			randomByte(),
+		},
+		{
+			"sig nil case no problem",
+			randomByte(),
+			nil,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			sig := NewModelFactory().NewSignature(c.expectedPub, c.expectedSig)
+			assert.Equal(t, c.expectedPub, sig.GetPubkey())
+			assert.Equal(t, c.expectedSig, sig.GetSignature())
+		})
+	}
+
+}

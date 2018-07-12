@@ -1,6 +1,7 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 )
@@ -55,6 +56,22 @@ func (b *Block) Verify() bool {
 		return false
 	}
 	return Verify(b.Signature.Pubkey, hash, b.Signature.Signature)
+}
+
+func (b *Block) Sign(pubKey []byte, privKey []byte) error {
+	hash, err := b.GetHash()
+	if err != nil {
+		return err
+	}
+	signature, err := Sign(privKey, hash)
+	if err != nil {
+		return err
+	}
+	if !Verify(pubKey, hash, signature) {
+		return errors.Errorf("Failed Verify")
+	}
+	b.Signature = &bbft.Signature{Pubkey: pubKey, Signature: signature}
+	return nil
 }
 
 func (h *BlockHeader) GetHash() ([]byte, error) {

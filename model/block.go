@@ -6,6 +6,7 @@ type Block interface {
 	GetSignature() Signature
 	GetHash() ([]byte, error)
 	Verify() bool
+	Sign(pubKey []byte, privKey []byte) error
 }
 
 type BlockHeader interface {

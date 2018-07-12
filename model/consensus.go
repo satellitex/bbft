@@ -3,6 +3,7 @@ package model
 type VoteMessage interface {
 	GetBlockHash() []byte
 	GetSignature() Signature
+	Sign(pubKey []byte, privKey []byte) error
 }
 
 type ConsensusSender interface {

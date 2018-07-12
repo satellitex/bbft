@@ -15,3 +15,7 @@ build-osx:
 .PHONY: test
 test:
 	go test -cover -v $(shell glide novendor)
+
+.PHONY: test-ci
+test-ci:
+	go test -v $(shell glide novendor)

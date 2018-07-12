@@ -1,6 +1,7 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -14,7 +15,7 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 		err := vote.Sign(validPub, validPri)
 		require.NoError(t, err)
 
-		assert.True(t, vote.Verify())
+		assert.NoError(t, vote.Verify())
 	})
 	t.Run("success valid key and nil hash", func(t *testing.T) {
 		validPub, validPri := NewKeyPair()
@@ -23,7 +24,7 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 		err := vote.Sign(validPub, validPri)
 		require.NoError(t, err)
 
-		assert.True(t, vote.Verify())
+		assert.NoError(t, vote.Verify())
 	})
 	t.Run("failed invalid key and exist hash", func(t *testing.T) {
 		invalid, _ := NewKeyPair()
@@ -32,7 +33,7 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 		err := vote.Sign(invalid, invalid)
 		require.Error(t, err)
 
-		assert.False(t, vote.Verify())
+		assert.EqualError(t, errors.Cause(vote.Verify()), ErrVoteMessageVerify.Error())
 	})
 	t.Run("failed invalid key and nil hash", func(t *testing.T) {
 		invalid, _ := NewKeyPair()
@@ -41,12 +42,12 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 		err := vote.Sign(invalid, invalid)
 		require.Error(t, err)
 
-		assert.False(t, vote.Verify())
+		assert.EqualError(t, errors.Cause(vote.Verify()), ErrVoteMessageVerify.Error())
 	})
 	t.Run("failed nil signature", func(t *testing.T) {
 		vote := NewModelFactory().NewVoteMessage(nil)
 		vote.(*VoteMessage).Signature = nil
 
-		assert.False(t, vote.Verify())
+		assert.EqualError(t, errors.Cause(vote.Verify()), ErrVoteMessageVerify.Error())
 	})
 }

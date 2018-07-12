@@ -1,9 +1,12 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 )
+
+var ErrTransactionVerify = errors.Errorf("Failed Transaction Verify")
 
 type Transaction struct {
 	*bbft.Transaction
@@ -29,23 +32,23 @@ func (t *Transaction) GetSignatures() []model.Signature {
 	return ret
 }
 
-func (t *Transaction) Verify() bool {
+func (t *Transaction) Verify() error {
 	hash, err := t.GetHash()
 	if err != nil {
-		return false
+		return errors.Wrapf(ErrTransactionVerify, err.Error())
 	}
 	if len(t.Signatures) == 0 {
-		return false
+		return errors.Wrapf(ErrTransactionVerify, "Signature length is 0")
 	}
-	for _, signature := range t.Signatures {
+	for i, signature := range t.Signatures {
 		if signature == nil {
-			return false
+			return errors.Wrapf(ErrTransactionVerify, "%d-th Signature is nil", i)
 		}
-		if Verify(signature.Pubkey, hash, signature.Signature) == false {
-			return false
+		if err := Verify(signature.Pubkey, hash, signature.Signature); err != nil {
+			return errors.Wrapf(ErrTransactionVerify, err.Error())
 		}
 	}
-	return true
+	return nil
 }
 
 func (p *TransactionPayload) GetMessage() string {

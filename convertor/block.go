@@ -6,6 +6,8 @@ import (
 	"github.com/satellitex/bbft/proto"
 )
 
+var ErrBlockVerify = errors.Errorf("Failed Block Verify")
+
 type Block struct {
 	*bbft.Block
 }
@@ -54,15 +56,18 @@ func (b *Block) GetHash() ([]byte, error) {
 	return CalcHash(result), nil
 }
 
-func (b *Block) Verify() bool {
+func (b *Block) Verify() error {
 	hash, err := b.GetHash()
 	if err != nil {
-		return false
+		return errors.Wrapf(ErrBlockVerify, err.Error())
 	}
 	if b.Signature == nil {
-		return false
+		return errors.Wrapf(ErrBlockVerify, "Signature is nil")
 	}
-	return Verify(b.Signature.Pubkey, hash, b.Signature.Signature)
+	if err = Verify(b.Signature.Pubkey, hash, b.Signature.Signature); err != nil {
+		return errors.Wrapf(ErrBlockVerify, err.Error())
+	}
+	return nil
 }
 
 func (b *Block) Sign(pubKey []byte, privKey []byte) error {
@@ -74,8 +79,8 @@ func (b *Block) Sign(pubKey []byte, privKey []byte) error {
 	if err != nil {
 		return err
 	}
-	if !Verify(pubKey, hash, signature) {
-		return errors.Errorf("Failed Verify")
+	if err := Verify(pubKey, hash, signature); err != nil {
+		return err
 	}
 	b.Signature = &bbft.Signature{Pubkey: pubKey, Signature: signature}
 	return nil

@@ -1,9 +1,9 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -29,18 +29,18 @@ func TestBlock_SignAndVerify(t *testing.T) {
 
 		block := randomValidBlock(t)
 		err := block.Sign(validPub, validPri)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
-		assert.True(t, block.Verify())
+		assert.NoError(t, block.Verify())
 	})
 	t.Run("success valid key and inValid txs", func(t *testing.T) {
 		validPub, validPri := NewKeyPair()
 
 		block := randomInvalidBlock(t)
 		err := block.Sign(validPub, validPri)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
-		assert.True(t, block.Verify())
+		assert.NoError(t, block.Verify())
 	})
 	t.Run("failed invalid key and valid block", func(t *testing.T) {
 		inValidPub := randomByte()
@@ -48,9 +48,9 @@ func TestBlock_SignAndVerify(t *testing.T) {
 
 		block := randomValidBlock(t)
 		err := block.Sign(inValidPub, inValidPriv)
-		require.Error(t, err)
+		assert.Error(t, err)
 
-		assert.False(t, block.Verify())
+		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
 	})
 	t.Run("failed invalid key and invalid block", func(t *testing.T) {
 		inValidPub := randomByte()
@@ -58,14 +58,14 @@ func TestBlock_SignAndVerify(t *testing.T) {
 
 		block := randomInvalidBlock(t)
 		err := block.Sign(inValidPub, inValidPriv)
-		require.Error(t, err)
+		assert.Error(t, err)
 
-		assert.False(t, block.Verify())
+		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
 	})
 	t.Run("failed nil signature", func(t *testing.T) {
 		block := randomValidBlock(t)
 		block.(*Block).Signature = nil
 
-		assert.False(t, block.Verify())
+		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
 	})
 }

@@ -110,8 +110,8 @@ func (b *TxModelBuilder) Sign(pubkey []byte, privateKey []byte) *TxModelBuilder 
 	if err != nil {
 		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
 	}
-	if !Verify(pubkey, hash, signature) {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: Can not verify comb with pubKey and privateKey"))
+	if err := Verify(pubkey, hash, signature); err != nil {
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
 	}
 	b.Signatures = append(b.Signatures,
 		&bbft.Signature{

@@ -22,7 +22,7 @@ func TestSignAndVerify(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	signature, err := Sign(privkey, hash)
 	require.NoError(t, err)
-	assert.True(t, Verify(pubkey, hash, signature),
+	assert.NoError(t, Verify(pubkey, hash, signature),
 		"pubkey: %x \nhash: %x\nsignature %x", pubkey, hash, signature)
 }
 
@@ -37,7 +37,7 @@ func TestFailedVerifyNilPubkey(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	signature, err := Sign(privkey, hash)
 	require.NoError(t, err)
-	assert.False(t, Verify(nil, hash, signature),
+	assert.Error(t, Verify(nil, hash, signature),
 		"pubkey: %x \nhash: %x\nsignature %x", nil, hash, signature)
 }
 
@@ -46,7 +46,7 @@ func TestFailedVerifyNilSignature(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	_, err := Sign(privkey, hash)
 	require.NoError(t, err)
-	assert.False(t, Verify(pubkey, hash, nil),
+	assert.Error(t, Verify(pubkey, hash, nil),
 		"pubkey: %x \nhash: %x\nsignature %x", pubkey, hash, nil)
 }
 
@@ -55,6 +55,6 @@ func TestFailedVerifyNilHash(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	signature, err := Sign(privkey, hash)
 	require.NoError(t, err)
-	assert.False(t, Verify(pubkey, nil, signature),
+	assert.Error(t, Verify(pubkey, nil, signature),
 		"pubkey: %x \nhash: %x\nsignature %x", pubkey, nil, signature)
 }

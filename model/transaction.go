@@ -4,7 +4,7 @@ type Transaction interface {
 	GetPayload() TransactionPayload
 	GetSignatures() []Signature
 	GetHash() ([]byte, error)
-	Verify() bool
+	Verify() error
 }
 
 type TransactionPayload interface {

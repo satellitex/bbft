@@ -6,6 +6,8 @@ import (
 	"github.com/satellitex/bbft/proto"
 )
 
+var ErrVoteMessageVerify = errors.Errorf("Failed VoteMessage Verify")
+
 type VoteMessage struct {
 	*bbft.VoteMessage
 }
@@ -19,18 +21,21 @@ func (v *VoteMessage) Sign(pubKey []byte, privKey []byte) error {
 	if err != nil {
 		return err
 	}
-	if !Verify(pubKey, v.GetBlockHash(), signature) {
-		return errors.Errorf("Failed Verify")
+	if err := Verify(pubKey, v.GetBlockHash(), signature); err != nil {
+		return err
 	}
 	v.Signature = &bbft.Signature{Pubkey: pubKey, Signature: signature}
 	return nil
 }
 
-func (v *VoteMessage) Verify() bool {
+func (v *VoteMessage) Verify() error {
 	if v.Signature == nil {
-		return false
+		return errors.Wrapf(ErrVoteMessageVerify, "Signature is nil")
 	}
-	return Verify(v.Signature.Pubkey, v.GetBlockHash(), v.Signature.Signature)
+	if err := Verify(v.Signature.Pubkey, v.GetBlockHash(), v.Signature.Signature); err != nil {
+		return errors.Wrapf(ErrVoteMessageVerify, err.Error())
+	}
+	return nil
 }
 
 type GrpcConsensusSender struct {

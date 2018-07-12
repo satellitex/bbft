@@ -1,7 +1,9 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -12,7 +14,7 @@ func validSignedBlock(t *testing.T) model.Block {
 
 	err := block.Sign(validPub, validPri)
 	require.NoError(t, err)
-	require.True(t, block.Verify())
+	require.NoError(t, block.Verify())
 	return block
 }
 
@@ -22,7 +24,7 @@ func invalidSingedBlock(t *testing.T) model.Block {
 
 	err := block.Sign(validPub, validPri)
 	require.NoError(t, err)
-	require.True(t, block.Verify())
+	require.NoError(t, block.Verify())
 	return block
 }
 
@@ -33,7 +35,7 @@ func invalidErrSignedBlock(t *testing.T) model.Block {
 
 	err := block.Sign(inValidPub, inValidPriv)
 	require.Error(t, err)
-	require.False(t, block.Verify())
+	require.Error(t, block.Verify())
 	return block
 }
 
@@ -44,7 +46,7 @@ func validErrSignedBlock(t *testing.T) model.Block {
 
 	err := block.Sign(inValidPub, inValidPriv)
 	require.Error(t, err)
-	require.False(t, block.Verify())
+	require.Error(t, block.Verify())
 	return block
 }
 
@@ -52,18 +54,18 @@ func TestStatelessValidator_Validate(t *testing.T) {
 	slv := NewStatelessValidator()
 	t.Run("success valid key and valid txs", func(t *testing.T) {
 		block := validSignedBlock(t)
-		require.True(t, slv.Validate(block))
+		assert.NoError(t, slv.Validate(block))
 	})
 	t.Run("failed valid key and inValid txs", func(t *testing.T) {
 		block := invalidSingedBlock(t)
-		require.False(t, slv.Validate(block))
+		assert.EqualError(t, errors.Cause(slv.Validate(block)), ErrStatelessValidate.Error())
 	})
 	t.Run("failed invalid key and valid block", func(t *testing.T) {
 		block := validErrSignedBlock(t)
-		require.False(t, slv.Validate(block))
+		assert.EqualError(t, errors.Cause(slv.Validate(block)), ErrStatelessValidate.Error())
 	})
 	t.Run("failed invalid key and invalid block", func(t *testing.T) {
 		block := invalidErrSignedBlock(t)
-		require.False(t, slv.Validate(block))
+		assert.EqualError(t, errors.Cause(slv.Validate(block)), ErrStatelessValidate.Error())
 	})
 }

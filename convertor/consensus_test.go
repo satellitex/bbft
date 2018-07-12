@@ -31,6 +31,8 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 
 		err := vote.Sign(invalid, invalid)
 		require.Error(t, err)
+
+		assert.False(t, vote.Verify())
 	})
 	t.Run("failed invalid key and nil hash", func(t *testing.T) {
 		invalid, _ := NewKeyPair()
@@ -38,5 +40,7 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 
 		err := vote.Sign(invalid, invalid)
 		require.Error(t, err)
+
+		assert.False(t, vote.Verify())
 	})
 }

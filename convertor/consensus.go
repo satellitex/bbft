@@ -27,6 +27,9 @@ func (v *VoteMessage) Sign(pubKey []byte, privKey []byte) error {
 }
 
 func (v *VoteMessage) Verify() bool {
+	if v.Signature == nil {
+		return false
+	}
 	return Verify(v.Signature.Pubkey, v.GetBlockHash(), v.Signature.Signature)
 }
 

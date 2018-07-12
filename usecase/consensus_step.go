@@ -20,6 +20,7 @@ type ConsensusStepUsecase struct {
 	sender             model.ConsensusSender
 	statelessValidator model.StatelessValidator
 	statefulValidator  model.StatefulValidator
+	factory            model.ModelFactory
 }
 
 var (

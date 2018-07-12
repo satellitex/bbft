@@ -6,7 +6,7 @@ import (
 )
 
 type ConsensusReceiver interface {
-	Propagate(ptx model.ProposalTx) error
+	Propagate(ptx model.Transaction) error
 	Propose(proposal model.Proposal) error
 	Vote(vote model.VoteMessage) error
 	PreCommit(preCommit model.VoteMessage) error
@@ -18,7 +18,7 @@ type ConsensusReceieverUsecase struct {
 	sender model.ConsensusSender
 }
 
-func (c *ConsensusReceieverUsecase) Propagate(proposalTx model.ProposalTx) error {
+func (c *ConsensusReceieverUsecase) Propagate(proposalTx model.Transaction) error {
 	return nil
 }
 

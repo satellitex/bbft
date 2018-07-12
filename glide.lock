@@ -1,5 +1,5 @@
-hash: 7d60ead3261f09f03c22f2ed6cde6fbdd189e07cfbe274243d237571a19d0ec2
-updated: 2018-07-12T14:18:04.423121+09:00
+hash: b6468ce3c1a45640030981e68124a00416e72674c889df7a1fb5da6836989c9e
+updated: 2018-07-12T23:31:29.397458+09:00
 imports:
 - name: github.com/golang/protobuf
   version: 1325a051a2753cd67556b182843b1b693d0854cd
@@ -29,6 +29,10 @@ imports:
   subpackages:
   - assert
   - require
+- name: go.uber.org/atomic
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
+- name: go.uber.org/multierr
+  version: ddea229ff1dff9e6fe8a6c0344ac73b09e81fce5
 - name: golang.org/x/crypto
   version: a49355c7e3f8fe157a85be2f77e6e269a0f89602
   subpackages:

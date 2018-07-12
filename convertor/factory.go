@@ -1,10 +1,10 @@
 package convertor
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
+	"go.uber.org/multierr"
 )
 
 type ModelFactory struct{}
@@ -13,6 +13,7 @@ var (
 	ErrModelFactoryNewBlock       = errors.New("Failed Create model.Block")
 	ErrModelFactoryNewProposal    = errors.New("Failed Create model.Proposal")
 	ErrModelFactoryNewVoteMessage = errors.New("Failed Create model.VoteMessage")
+	ErrTxModelBuild               = errors.Errorf("Failed build TxModelBuildeer has error")
 )
 
 func NewModelFactory() model.ModelFactory {
@@ -87,6 +88,7 @@ func (_ *ModelFactory) NewSignature(pubkey []byte, signature []byte) model.Signa
 
 type TxModelBuilder struct {
 	*Transaction
+	err error
 }
 
 func NewTxModelBuilder() *TxModelBuilder {
@@ -94,13 +96,17 @@ func NewTxModelBuilder() *TxModelBuilder {
 		&Transaction{
 			&bbft.Transaction{
 				Payload:    &bbft.Transaction_Payload{},
-				Signatures: make([]*bbft.Signature, 0, 5),
+				Signatures: make([]*bbft.Signature, 0, 32),
 			},
-		}}
+		}, nil}
 }
 
 func (b *TxModelBuilder) Signature(sig model.Signature) *TxModelBuilder {
-	signature, _ := sig.(*Signature)
+	signature, ok := sig.(*Signature)
+	if !ok {
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Signature: Can not cast Signature model: %#v.", sig))
+		return b
+	}
 	b.Signatures = append(b.Signatures, signature.Signature)
 	return b
 }
@@ -108,12 +114,19 @@ func (b *TxModelBuilder) Signature(sig model.Signature) *TxModelBuilder {
 func (b *TxModelBuilder) Sign(pubkey []byte, privateKey []byte) *TxModelBuilder {
 	hash, err := b.GetHash()
 	if err != nil {
-		fmt.Printf("Error Sign : %s", err.Error())
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
+	}
+	signature, err := Sign(privateKey, hash)
+	if err != nil {
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
+	}
+	if !Verify(pubkey, hash, signature) {
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: Can not verify comb with pubKey and privateKey"))
 	}
 	b.Signatures = append(b.Signatures,
 		&bbft.Signature{
 			Pubkey:    pubkey,
-			Signature: Sign(privateKey, hash),
+			Signature: signature,
 		})
 	return b
 }
@@ -123,6 +136,9 @@ func (b *TxModelBuilder) Message(msg string) *TxModelBuilder {
 	return b
 }
 
-func (b *TxModelBuilder) build() model.Transaction {
-	return b.Transaction
+func (b *TxModelBuilder) build() (model.Transaction, error) {
+	if b.err != nil {
+		return nil, errors.Wrapf(ErrTxModelBuild, b.err.Error())
+	}
+	return b.Transaction, nil
 }

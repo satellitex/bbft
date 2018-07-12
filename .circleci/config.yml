@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/sallitex/bbft
     docker:
-      - image: satellitex/bbft:$CIRCLE_BRANCH
+      - image: satellitex/bbft:feature_ci_test
     steps:
       - checkout
       - restore_cache:

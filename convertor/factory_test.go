@@ -7,6 +7,7 @@ import (
 	rnd "math/rand"
 	"strconv"
 	"testing"
+	"github.com/pkg/errors"
 )
 
 func randomTx() model.Transaction {
@@ -116,7 +117,7 @@ func TestBlockFactory(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			block, err := NewModelFactory().NewBlock(c.expectedHeight, c.expectedHash, c.expectedCreatedTime, c.expectedTxs, c.expectedSig)
 			if c.expectedError != nil {
-				assert.Error(t, err)
+				assert.EqualError(t, errors.Cause(err), c.expectedError.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -173,7 +174,7 @@ func TestProposalFactory(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			proposal, err := NewModelFactory().NewProposal(c.expectedBlock, c.expectedRound)
 			if c.expectedError != nil {
-				assert.Error(t, err)
+				assert.EqualError(t, errors.Cause(err), c.expectedError.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -183,3 +184,63 @@ func TestProposalFactory(t *testing.T) {
 	}
 
 }
+
+func TestVoteMessageFactory(t *testing.T) {
+	for _, c := range []struct {
+		name          string
+		expectedError error
+		expectedHash []byte
+		expectedSig	model.Signature
+	}{
+		{
+			"case 1",
+			nil,
+			randomByte(),
+			randomSig(),
+		},
+		{
+			"case 2",
+			nil,
+			randomByte(),
+			randomSig(),
+		},
+		{
+			"case 3",
+			nil,
+			randomByte(),
+			randomSig(),
+		},
+		{
+			"case 4",
+			nil,
+			randomByte(),
+			randomSig(),
+		},
+		{
+			"sig nil case",
+			ErrModelFactoryNewVoteMessage,
+			randomByte(),
+			nil,
+		},
+		{
+			"hash nil case no problem",
+			nil,
+			nil,
+			randomSig(),
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			vote, err := NewModelFactory().NewVoteMessage(c.expectedHash, c.expectedSig)
+			if c.expectedError != nil {
+				assert.EqualError(t, errors.Cause(err), c.expectedError.Error())
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, c.expectedHash, vote.GetBlockHash())
+			assert.Equal(t, c.expectedSig.GetPubkey(), vote.GetSignature().GetPubkey())
+			assert.Equal(t, c.expectedSig.GetSignature(), vote.GetSignature().GetSignature())
+		})
+	}
+
+}
+

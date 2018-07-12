@@ -24,3 +24,9 @@ import:
   subpackages:
   - assert
   - require
+- name: golang.org/x/text
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm

@@ -15,7 +15,7 @@ jobs:
           command: |
             vendor_dir=/go/src/github.com/satellitex/bbft/vendor
             if [ ! -s $vendor_dir ]; then
-              glide up
+              glide install
             fi
       - save_cache:
           key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}

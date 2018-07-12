@@ -3,7 +3,6 @@ package convertor
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ed25519"
@@ -19,13 +18,19 @@ func CalcHash(b []byte) []byte {
 	return sha.Sum(nil)
 }
 
-func Verify(pubkey []byte, message []byte, signature []byte) bool {
+func Verify(pubkey []byte, message []byte, signature []byte) error {
 	if l := len(pubkey); l != ed25519.PublicKeySize {
-		fmt.Printf("ed25519: bad private key length: %d, expected %d",
+		return errors.Errorf("ed25519: bad private key length: %d, expected %d",
 			l, ed25519.PublicKeySize)
-		return false
 	}
-	return ed25519.Verify(pubkey, message, signature)
+	if ok := ed25519.Verify(pubkey, message, signature); !ok {
+		return errors.Errorf("ed25519.Verify is invalid\n"+
+			"pubkey: %x\n"+
+			"message: %x\n"+
+			"signature: %x",
+			pubkey, message, signature)
+	}
+	return nil
 }
 
 func Sign(privkey []byte, message []byte) ([]byte, error) {
@@ -55,12 +60,4 @@ func CalcHashFromProto(msg proto.Message) ([]byte, error) {
 		return nil, errors.Wrap(ErrMarshalProtocolBuffer, err.Error())
 	}
 	return CalcHash(pb), nil
-}
-
-func VerifyFromProto(pubkey []byte, msg proto.Message, signature []byte) bool {
-	hash, err := CalcHashFromProto(msg)
-	if err != nil {
-		return false
-	}
-	return Verify(pubkey, hash, signature)
 }

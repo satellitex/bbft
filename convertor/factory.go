@@ -20,13 +20,7 @@ func NewModelFactory() model.ModelFactory {
 	return &ModelFactory{}
 }
 
-func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime int64, txs []model.Transaction, signature model.Signature) (model.Block, error) {
-	sig, ok := signature.(*Signature)
-	if !ok {
-		return nil, errors.Wrapf(ErrModelFactoryNewBlock,
-			"Can not cast Signature model: %#v.", signature)
-	}
-
+func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime int64, txs []model.Transaction) (model.Block, error) {
 	ptxs := make([]*bbft.Transaction, len(txs))
 	for id, tx := range txs {
 		tmp, ok := tx.(*Transaction)
@@ -44,7 +38,7 @@ func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime i
 				CreatedTime:  createdTime,
 			},
 			Transactions: ptxs,
-			Signature:    sig.Signature,
+			Signature:    &bbft.Signature{},
 		},
 	}, nil
 }
@@ -63,18 +57,13 @@ func (_ *ModelFactory) NewProposal(block model.Block, round int64) (model.Propos
 	}, nil
 }
 
-func (_ *ModelFactory) NewVoteMessage(hash []byte, signature model.Signature) (model.VoteMessage, error) {
-	sigtmp, ok := signature.(*Signature)
-	if !ok {
-		return nil, errors.Wrapf(ErrModelFactoryNewVoteMessage,
-			"Can not cast Signature model: %#v.", signature)
-	}
+func (_ *ModelFactory) NewVoteMessage(hash []byte) model.VoteMessage {
 	return &VoteMessage{
 		&bbft.VoteMessage{
 			BlockHash: hash,
-			Signature: sigtmp.Signature,
+			Signature: &bbft.Signature{},
 		},
-	}, nil
+	}
 }
 
 func (_ *ModelFactory) NewSignature(pubkey []byte, signature []byte) model.Signature {
@@ -101,6 +90,7 @@ func NewTxModelBuilder() *TxModelBuilder {
 		}, nil}
 }
 
+// Test 用 Verifyしない
 func (b *TxModelBuilder) Signature(sig model.Signature) *TxModelBuilder {
 	signature, ok := sig.(*Signature)
 	if !ok {
@@ -120,8 +110,8 @@ func (b *TxModelBuilder) Sign(pubkey []byte, privateKey []byte) *TxModelBuilder 
 	if err != nil {
 		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
 	}
-	if !Verify(pubkey, hash, signature) {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: Can not verify comb with pubKey and privateKey"))
+	if err := Verify(pubkey, hash, signature); err != nil {
+		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
 	}
 	b.Signatures = append(b.Signatures,
 		&bbft.Signature{

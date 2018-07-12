@@ -1,9 +1,12 @@
 package convertor
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 )
+
+var ErrBlockVerify = errors.Errorf("Failed Block Verify")
 
 type Block struct {
 	*bbft.Block
@@ -34,16 +37,53 @@ func (b *Block) GetSignature() model.Signature {
 }
 
 func (b *Block) GetHash() ([]byte, error) {
-	// TODO TransactionとHeraderを分割してHashする
-	return CalcHashFromProto(b)
+	//TODO 毎回 sha256計算したほうが一気にやるよりはやそう？
+	result, err := b.GetHeader().GetHash()
+	if err != nil {
+		return nil, err
+	}
+	for _, tx := range b.GetTransactions() {
+		proto, ok := tx.(*Transaction)
+		if !ok {
+			return nil, errors.Errorf("Can not cast Transaction model: %#v.", tx)
+		}
+		hash, err := CalcHashFromProto(proto)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, hash...)
+	}
+	return CalcHash(result), nil
 }
 
-func (b *Block) Verify() bool {
+func (b *Block) Verify() error {
 	hash, err := b.GetHash()
 	if err != nil {
-		return false
+		return errors.Wrapf(ErrBlockVerify, err.Error())
 	}
-	return Verify(b.Signature.Pubkey, hash, b.Signature.Signature)
+	if b.Signature == nil {
+		return errors.Wrapf(ErrBlockVerify, "Signature is nil")
+	}
+	if err = Verify(b.Signature.Pubkey, hash, b.Signature.Signature); err != nil {
+		return errors.Wrapf(ErrBlockVerify, err.Error())
+	}
+	return nil
+}
+
+func (b *Block) Sign(pubKey []byte, privKey []byte) error {
+	hash, err := b.GetHash()
+	if err != nil {
+		return err
+	}
+	signature, err := Sign(privKey, hash)
+	if err != nil {
+		return err
+	}
+	if err := Verify(pubKey, hash, signature); err != nil {
+		return err
+	}
+	b.Signature = &bbft.Signature{Pubkey: pubKey, Signature: signature}
+	return nil
 }
 
 func (h *BlockHeader) GetHash() ([]byte, error) {

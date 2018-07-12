@@ -62,4 +62,10 @@ func TestBlock_SignAndVerify(t *testing.T) {
 
 		assert.False(t, block.Verify())
 	})
+	t.Run("failed nil signature", func(t *testing.T) {
+		block := randomValidBlock(t)
+		block.(*Block).Signature = nil
+
+		assert.False(t, block.Verify())
+	})
 }

@@ -43,4 +43,10 @@ func TestVoteMessage_SignAndVerify(t *testing.T) {
 
 		assert.False(t, vote.Verify())
 	})
+	t.Run("failed nil signature", func(t *testing.T) {
+		vote := NewModelFactory().NewVoteMessage(nil)
+		vote.(*VoteMessage).Signature = nil
+
+		assert.False(t, vote.Verify())
+	})
 }

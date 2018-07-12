@@ -38,6 +38,7 @@ func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime i
 				CreatedTime:  createdTime,
 			},
 			Transactions: ptxs,
+			Signature:    &bbft.Signature{},
 		},
 	}, nil
 }
@@ -58,7 +59,10 @@ func (_ *ModelFactory) NewProposal(block model.Block, round int64) (model.Propos
 
 func (_ *ModelFactory) NewVoteMessage(hash []byte) model.VoteMessage {
 	return &VoteMessage{
-		&bbft.VoteMessage{BlockHash: hash},
+		&bbft.VoteMessage{
+			BlockHash: hash,
+			Signature: &bbft.Signature{},
+		},
 	}
 }
 

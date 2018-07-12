@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build:
-    working_directory: /go/src/github.com/sallitex/bbft
+    working_directory: /go/src/github.com/satellitex/bbft
     docker:
       - image: satellitex/bbft:feature_ci_test
     steps:
@@ -9,18 +9,18 @@ jobs:
       - restore_cache:
           key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
           paths:
-            - /go/src/github.com/sallitex/bbft/vendor
+            - /go/src/github.com/satellitex/bbft
       - run:
           name: glide install
           command: |
-            vendor_dir=/go/src/github.com/sallitex/bbft/vendor
+            vendor_dir=/go/src/github.com/satellitex/bbft
             if [ ! -s $vendor_dir ]; then
               glide up
             fi
       - save_cache:
           key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
           paths:
-          - /go/src/github.com/sallitex/bbft/vendor
+          - /go/src/github.com/satellitex/bbft
       - run:
           name: protoc
           command: make proto

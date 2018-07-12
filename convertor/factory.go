@@ -67,7 +67,12 @@ func (_ *ModelFactory) NewVoteMessage(hash []byte) model.VoteMessage {
 }
 
 func (_ *ModelFactory) NewSignature(pubkey []byte, signature []byte) model.Signature {
-	return NewSignature(pubkey, signature)
+	return &Signature{
+		&bbft.Signature{
+			Pubkey:    pubkey,
+			Signature: signature,
+		},
+	}
 }
 
 type TxModelBuilder struct {

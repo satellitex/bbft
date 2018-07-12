@@ -55,13 +55,11 @@ func (b *Block) GetHash() ([]byte, error) {
 }
 
 func (b *Block) Verify() bool {
-	for _, tx := range b.GetTransactions() {
-		if !tx.Verify() {
-			return false
-		}
-	}
 	hash, err := b.GetHash()
 	if err != nil {
+		return false
+	}
+	if b.Signature == nil {
 		return false
 	}
 	return Verify(b.Signature.Pubkey, hash, b.Signature.Signature)

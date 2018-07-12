@@ -21,6 +21,15 @@ func (v *StatefulValidator) Validate(block model.Block) bool {
 type StatelessValidator struct {
 }
 
+func NewStatelessValidator() model.StatelessValidator {
+	return &StatelessValidator{}
+}
+
 func (v *StatelessValidator) Validate(block model.Block) bool {
+	for _, tx := range block.GetTransactions() {
+		if !tx.Verify() {
+			return false
+		}
+	}
 	return block.Verify()
 }

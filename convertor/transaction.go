@@ -34,7 +34,13 @@ func (t *Transaction) Verify() bool {
 	if err != nil {
 		return false
 	}
+	if len(t.Signatures) == 0 {
+		return false
+	}
 	for _, signature := range t.Signatures {
+		if signature == nil {
+			return false
+		}
 		if Verify(signature.Pubkey, hash, signature.Signature) == false {
 			return false
 		}

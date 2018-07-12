@@ -40,7 +40,7 @@ func TestBlock_SignAndVerify(t *testing.T) {
 		err := block.Sign(validPub, validPri)
 		require.NoError(t, err)
 
-		assert.False(t, block.Verify())
+		assert.True(t, block.Verify())
 	})
 	t.Run("failed invalid key and valid block", func(t *testing.T) {
 		inValidPub := randomByte()
@@ -49,6 +49,8 @@ func TestBlock_SignAndVerify(t *testing.T) {
 		block := randomValidBlock(t)
 		err := block.Sign(inValidPub, inValidPriv)
 		require.Error(t, err)
+
+		assert.False(t, block.Verify())
 	})
 	t.Run("failed invalid key and invalid block", func(t *testing.T) {
 		inValidPub := randomByte()
@@ -57,5 +59,7 @@ func TestBlock_SignAndVerify(t *testing.T) {
 		block := randomInvalidBlock(t)
 		err := block.Sign(inValidPub, inValidPriv)
 		require.Error(t, err)
+
+		assert.False(t, block.Verify())
 	})
 }

@@ -10,6 +10,7 @@ type ClientGateReceiver interface {
 
 type ClientGateReceiverUsecase struct {
 	validator model.StatelessValidator
+	factory   model.ModelFactory
 }
 
 func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {

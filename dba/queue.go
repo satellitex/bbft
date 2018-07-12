@@ -6,8 +6,8 @@ import (
 )
 
 type ProposalTxQueue interface {
-	Push(tx model.ProposalTx) error
-	Pop() (model.ProposalTx, bool)
+	Push(tx model.Transaction) error
+	Pop() (model.Transaction, bool)
 }
 
 type ProposalTxQueueOnMemory struct {
@@ -20,10 +20,10 @@ func NewProposalTxQueueOnMemory() ProposalTxQueue {
 	}
 }
 
-func (q *ProposalTxQueueOnMemory) Push(tx model.ProposalTx) error {
+func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
 	return nil
 }
 
-func (q *ProposalTxQueueOnMemory) Pop() (model.ProposalTx, bool) {
+func (q *ProposalTxQueueOnMemory) Pop() (model.Transaction, bool) {
 	return nil, false
 }

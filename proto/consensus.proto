@@ -5,15 +5,6 @@ import "primitive.proto";
 import "transaction.proto";
 import "block.proto";
 
-
-/**
- * ProposalTx はリーダーによる署名を得てProposalQueueに入れて良いとされるTx
- **/
-message ProposalTx {
-    Transaction tx = 1;
-    Signature signature = 2;
-}
-
 /**
  * VoteMessage の構造
  * blockHash : Block の Hash = ( header の Hash + transactions の累積ハッシュ + signature )
@@ -42,7 +33,7 @@ service ConsensusGate {
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) TODO : 署名の主がPeerでない場合
      **/
-    rpc Propagate (ProposalTx) returns (ConsensusResponse);
+    rpc Propagate (Transaction) returns (ConsensusResponse);
 
     /**
      * Propose は現在のRoundにおけるリーダーが新しいBlockの候補を提案することである。

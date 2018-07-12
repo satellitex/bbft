@@ -11,8 +11,8 @@ type ConsensusController struct {
 	receiver usecase.ConsensusReceiver
 }
 
-func (c *ConsensusController) Propagate(_ context.Context, ptx *bbft.ProposalTx) (*bbft.ConsensusResponse, error) {
-	proposalTx := &convertor.ProposalTx{ptx}
+func (c *ConsensusController) Propagate(_ context.Context, tx *bbft.Transaction) (*bbft.ConsensusResponse, error) {
+	proposalTx := &convertor.Transaction{tx}
 	err := c.receiver.Propagate(proposalTx)
 	if err != nil {
 		return nil, err

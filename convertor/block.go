@@ -35,13 +35,17 @@ func (b *Block) GetSignature() model.Signature {
 }
 
 func (b *Block) GetHash() ([]byte, error) {
-	//TODO tx.GetHash() は payload の hash なので signature を含んでない,毎回 sha256計算したほうが一気にやるよりはやそう？
+	//TODO 毎回 sha256計算したほうが一気にやるよりはやそう？
 	result, err := b.GetHeader().GetHash()
 	if err != nil {
 		return nil, err
 	}
 	for _, tx := range b.GetTransactions() {
-		hash, err := tx.GetHash()
+		proto, ok := tx.(*Transaction)
+		if !ok {
+			return nil, errors.Errorf("Can not cast Transaction model: %#v.", tx)
+		}
+		hash, err := CalcHashFromProto(proto)
 		if err != nil {
 			return nil, err
 		}
@@ -51,6 +55,11 @@ func (b *Block) GetHash() ([]byte, error) {
 }
 
 func (b *Block) Verify() bool {
+	for _, tx := range b.GetTransactions() {
+		if !tx.Verify() {
+			return false
+		}
+	}
 	hash, err := b.GetHash()
 	if err != nil {
 		return false

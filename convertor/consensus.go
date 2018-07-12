@@ -26,6 +26,10 @@ func (v *VoteMessage) Sign(pubKey []byte, privKey []byte) error {
 	return nil
 }
 
+func (v *VoteMessage) Verify() bool {
+	return Verify(v.Signature.Pubkey, v.GetBlockHash(), v.Signature.Signature)
+}
+
 type GrpcConsensusSender struct {
 	client bbft.ConsensusGateClient
 }

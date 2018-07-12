@@ -33,12 +33,24 @@ func randomInvalidTx(t *testing.T) model.Transaction {
 	return tx
 }
 
-func randomTxs(t *testing.T) []model.Transaction {
+func randomValidTxs(t *testing.T) []model.Transaction {
+	txs := make([]model.Transaction, 30)
+	for id, _ := range txs {
+		txs[id] = randomValidTx(t)
+	}
+	return txs
+}
+
+func randomInvalidTxs(t *testing.T) []model.Transaction {
 	txs := make([]model.Transaction, 30)
 	for id, _ := range txs {
 		txs[id] = randomInvalidTx(t)
 	}
 	return txs
+}
+
+func randomTxs(t *testing.T) []model.Transaction {
+	return randomValidTxs(t)
 }
 
 func randomByte() []byte {
@@ -61,10 +73,20 @@ func getHash(t *testing.T, hasher Hasher) []byte {
 	return hash
 }
 
-func randomBlock(t *testing.T) model.Block {
-	block, err := NewModelFactory().NewBlock(rnd.Int63(), randomByte(), rnd.Int63(), randomTxs(t))
+func randomValidBlock(t *testing.T) model.Block {
+	block, err := NewModelFactory().NewBlock(rnd.Int63(), randomByte(), rnd.Int63(), randomValidTxs(t))
 	require.NoError(t, err)
 	return block
+}
+
+func randomInvalidBlock(t *testing.T) model.Block {
+	block, err := NewModelFactory().NewBlock(rnd.Int63(), randomByte(), rnd.Int63(), randomInvalidTxs(t))
+	require.NoError(t, err)
+	return block
+}
+
+func randomBlock(t *testing.T) model.Block {
+	return randomValidBlock(t)
 }
 
 func TestBlockFactory(t *testing.T) {

@@ -4,6 +4,7 @@ type VoteMessage interface {
 	GetBlockHash() []byte
 	GetSignature() Signature
 	Sign(pubKey []byte, privKey []byte) error
+	Verify() bool
 }
 
 type ConsensusSender interface {

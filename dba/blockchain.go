@@ -67,8 +67,13 @@ func (b *BlockChainOnMemory) Commit(block model.Block) error {
 		b.db[b.counter] = block
 		b.counter += 1
 	} else {
+		hash, err := block.GetHash()
+		if err != nil {
+			return errors.Wrapf(ErrBlockChainCommit,
+				"Invalid block by commit : %s", err.Error())
+		}
 		return errors.Wrapf(ErrBlockChainCommit,
-			"Already exist block %x", block.GetHash())
+			"Already exist block %x", hash)
 	}
 	return nil
 }

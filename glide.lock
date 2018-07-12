@@ -1,5 +1,5 @@
-hash: e7f4f84ad00fabb9e2f7832f141663d4d87168c21941445e6e3352b8938cd7dd
-updated: 2018-07-11T15:26:43.583025+09:00
+hash: 7d60ead3261f09f03c22f2ed6cde6fbdd189e07cfbe274243d237571a19d0ec2
+updated: 2018-07-12T14:18:04.423121+09:00
 imports:
 - name: github.com/golang/protobuf
   version: 1325a051a2753cd67556b182843b1b693d0854cd
@@ -20,8 +20,20 @@ imports:
   - tags
   - util/metautils
   - validator
-- name: github.com/mattn/go-sqlite3
-  version: 3aefd9f0a162514f66d0e4ceda3edc44e66b502e
+- name: github.com/kelseyhightower/envconfig
+  version: dd1402a4d99de9ac2f396cd6fcb957bc2c695ec1
+- name: github.com/pkg/errors
+  version: 816c9085562cd7ee03e7f8188a1cfd942858cded
+- name: github.com/stretchr/testify
+  version: f35b8ab0b5a2cef36673838d662e249dd9c94686
+  subpackages:
+  - assert
+  - require
+- name: golang.org/x/crypto
+  version: a49355c7e3f8fe157a85be2f77e6e269a0f89602
+  subpackages:
+  - ed25519
+  - ed25519/internal/edwards25519
 - name: golang.org/x/net
   version: 039a4258aec0ad3c79b905677cceeab13b296a77
   subpackages:
@@ -75,4 +87,12 @@ imports:
   - status
   - tap
   - transport
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  subpackages:
+  - difflib

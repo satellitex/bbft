@@ -178,4 +178,7 @@ tags
 # auto-generated proto file
 *.pb.go
 
+# build directory
+bin/
+
 # End of https://www.gitignore.io/api/go,vim,macos,emacs,intellij

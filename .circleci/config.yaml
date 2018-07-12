@@ -1,0 +1,32 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/sallitex/bbft
+    docker:
+      - image: znly/protoc
+    steps:
+      - checkout
+      - restore_cache:
+          key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
+          paths:
+            - $CIRCLE_WORKING_DIRECTORY/vendor
+      - run:
+          name: glide install
+          command: |
+            vendor_dir=$CIRCLE_WORKING_DIRECTORY/vendor
+            if [ ! -s $vendor_dir ]; then
+              glide install
+            fi
+      - save_cache:
+          key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
+          paths:
+          - $CIRCLE_WORKING_DIRECTORY/vendor
+      - run:
+          name: protoc
+          command: make proto
+      - run:
+          name: test
+          command: make test
+      - run:
+          name: build
+          command: make build

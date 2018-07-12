@@ -9,8 +9,16 @@ type Block struct {
 	*bbft.Block
 }
 
+func ConvertBlock(block *bbft.Block) *Block {
+	return &Block{block}
+}
+
 type Proposal struct {
 	*bbft.Proposal
+}
+
+func ConvertProposal(proposal *bbft.Proposal) *Proposal {
+	return &Proposal{proposal}
 }
 
 type BlockHeader struct {

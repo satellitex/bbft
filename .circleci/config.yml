@@ -26,7 +26,7 @@ jobs:
           command: make proto
       - run:
           name: test
-          command: make test
+          command: make test-ci
       - run:
           name: build
           command: make build

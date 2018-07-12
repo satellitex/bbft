@@ -56,5 +56,5 @@ func TestFailedVerifyNilHash(t *testing.T) {
 	signature, err := Sign(privkey, hash)
 	require.NoError(t, err)
 	assert.False(t, Verify(pubkey, nil, signature),
-		"pubkey: %x \nhash: %x\nsignature %x", pubkey, hash, signature)
+		"pubkey: %x \nhash: %x\nsignature %x", pubkey, nil, signature)
 }

@@ -29,7 +29,7 @@ func (c *ConsensusController) Propose(_ context.Context, p *bbft.Proposal) (*bbf
 	return &bbft.ConsensusResponse{}, nil
 }
 func (c *ConsensusController) Vote(_ context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
-	vote := convertor.VoteMessage{v}
+	vote := &convertor.VoteMessage{v}
 	err := c.receiver.Vote(vote)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (c *ConsensusController) Vote(_ context.Context, v *bbft.VoteMessage) (*bbf
 	return &bbft.ConsensusResponse{}, nil
 }
 func (c *ConsensusController) PreCommit(_ context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
-	preCommit := convertor.VoteMessage{v}
+	preCommit := &convertor.VoteMessage{v}
 	err := c.receiver.PreCommit(preCommit)
 	if err != nil {
 		return nil, err

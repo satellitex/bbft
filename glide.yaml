@@ -20,3 +20,7 @@ import:
 - package: github.com/kelseyhightower/envconfig
 - package: github.com/pkg/errors
 - package: golang.org/x/crypto/ed25519
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
+  - require

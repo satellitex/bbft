@@ -18,6 +18,10 @@ func Verify(pubkey []byte, message []byte, signature []byte) bool {
 	return ed25519.Verify(pubkey, message, signature)
 }
 
+func Sign(privkey []byte, message []byte) []byte {
+	return ed25519.Sign(privkey, message)
+}
+
 func NewKeyPair() ([]byte, []byte) {
 	a, b, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

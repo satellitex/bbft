@@ -1,0 +1,32 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/satellitex/bbft
+    docker:
+      - image: satellitex/bbft:feature_ci_test
+    steps:
+      - checkout
+      - restore_cache:
+          key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
+          paths:
+            - /go/src/github.com/satellitex/bbft/vendor
+      - run:
+          name: glide install
+          command: |
+            vendor_dir=/go/src/github.com/satellitex/bbft/vendor
+            if [ ! -s $vendor_dir ]; then
+              glide install
+            fi
+      - save_cache:
+          key: bbft-{{ .Branch }}-{{ checksum "glide.lock" }}
+          paths:
+          - /go/src/github.com/satellitex/bbft/vendor
+      - run:
+          name: protoc
+          command: make proto
+      - run:
+          name: test
+          command: make test-ci
+      - run:
+          name: build
+          command: make build

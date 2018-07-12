@@ -24,3 +24,27 @@ func (p *ProposalTx) GetSignature() model.Signature {
 func (v *VoteMessage) GetSignature() model.Signature {
 	return &Signature{v.Signature}
 }
+
+type GrpcConsensusSender struct {
+	client bbft.ConsensusGateClient
+}
+
+func NewConsensusSender() model.ConsensusSender {
+	return &GrpcConsensusSender{nil}
+}
+
+func (s *GrpcConsensusSender) Propagate(ptx model.ProposalTx) error {
+	return nil
+}
+
+func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
+	return nil
+}
+
+func (s *GrpcConsensusSender) Vote(vote model.VoteMessage) error {
+	return nil
+}
+
+func (s *GrpcConsensusSender) PreCommit(vote model.VoteMessage) error {
+	return nil
+}

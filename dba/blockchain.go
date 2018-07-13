@@ -46,10 +46,13 @@ func (b *BlockChainOnMemory) Top() (model.Block, bool) {
 }
 
 var (
-	ErrBlockChainVerifyCommitVerifyBlock = errors.New("Failed Verify Block")
-	ErrBlockChainVerifyCommitHeightCheck = errors.New("Failed Block Height is not valid")
-	ErrBlockChainVerifyCommit            = errors.New("Failed Blockchain Verify Commit")
-	//TODO
+	ErrBlockChainVerifyCommitVerifyBlock         = errors.New("Failed Verify Block")
+	ErrBlockChainVerifyCommitInvalidHeight       = errors.New("Failed Invalid Height of Block")
+	ErrBlockChainVerifyCommitInvalidPreBlockHash = errors.New("Failed Invalid PreBlockHash of Block")
+	ErrBlockChainVerifyCommitInvalidCreatedTime  = errors.New("Failed Invalid CreatedTime of Block")
+	ErrBlockChainVerifyCommitAlreadyExist        = errors.New("Failed Alraedy Exist Block")
+	ErrBlockChainVerifyCommit                    = errors.New("Failed Blockchain Verify Commit")
+	ErrBlockChainCommit                          = errors.New("Failed Blockchain Commit")
 )
 
 func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
@@ -60,7 +63,7 @@ func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 
 	// Height Check
 	if height := block.GetHeader().GetHeight(); height != b.counter {
-		return errors.Wrapf(ErrBlockChainVerifyCommitHeightCheck, "height: %d, expected %d", height, b.counter)
+		return errors.Wrapf(ErrBlockChainVerifyCommitInvalidHeight, "height: %d, expected %d", height, b.counter)
 	}
 
 	top, ok := b.Top()
@@ -68,19 +71,19 @@ func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 	if ok {
 		// Must PreBlockHash == top.Hash
 		if preHash := block.GetHeader().GetPreBlockHash(); !bytes.Equal(preHash, model.MustGetHash(top)) {
-			return errors.Wrapf(ErrBlockChainVerifyCommit,
+			return errors.Wrapf(ErrBlockChainVerifyCommitInvalidPreBlockHash,
 				"block preBlockHash is not valid\npreBlockHash: %x\nexpected: %x\n",
 				preHash, model.MustGetHash(top))
 		}
 		// Must createdTime > top.createdTime
 		if createdTime := block.GetHeader().GetCreatedTime(); createdTime <= top.GetHeader().GetCreatedTime() {
-			return errors.Wrapf(ErrBlockChainVerifyCommit,
+			return errors.Wrapf(ErrBlockChainVerifyCommitInvalidCreatedTime,
 				"block CreatedTime is not valid\ncreatedTime: %d\npreBlockCreatedTime: %d",
 				createdTime, top.GetHeader().GetCreatedTime())
 		}
 		// Already exist check
 		if id, ok := b.getIndex(model.MustGetHash(block)); ok {
-			return errors.Wrapf(ErrBlockChainVerifyCommit,
+			return errors.Wrapf(ErrBlockChainVerifyCommitAlreadyExist,
 				"Already exist block %x is %d-th Block", model.MustGetHash(block), id)
 		}
 	}

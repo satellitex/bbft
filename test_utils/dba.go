@@ -21,7 +21,9 @@ func RandomCommitableBlock(t *testing.T, bc dba.BlockChain) model.Block {
 		block.Sign(validPub, validPri)
 		return block
 	}
-	return RandomValidBlock(t)
+	block := RandomValidBlock(t)
+	block.(*convertor.Block).Header.Height = 0
+	return ValidSignToBlock(block)
 }
 
 func RandomCommitBlock(t *testing.T, bc dba.BlockChain, height int) dba.BlockChain {
@@ -31,4 +33,10 @@ func RandomCommitBlock(t *testing.T, bc dba.BlockChain, height int) dba.BlockCha
 		require.NoError(t,err)
 	}
 	return bc
+}
+
+func ValidSignToBlock(b model.Block) model.Block {
+	pub, pri := convertor.NewKeyPair()
+	b.Sign(pub, pri)
+	return b
 }

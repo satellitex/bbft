@@ -46,7 +46,6 @@ func (b *BlockChainOnMemory) Top() (model.Block, bool) {
 }
 
 var (
-	ErrBlockChainVerifyCommitVerifyBlock         = errors.New("Failed Verify Block")
 	ErrBlockChainVerifyCommitInvalidHeight       = errors.New("Failed Invalid Height of Block")
 	ErrBlockChainVerifyCommitInvalidPreBlockHash = errors.New("Failed Invalid PreBlockHash of Block")
 	ErrBlockChainVerifyCommitInvalidCreatedTime  = errors.New("Failed Invalid CreatedTime of Block")
@@ -58,7 +57,7 @@ var (
 func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 	// Verify block
 	if err := block.Verify(); err != nil {
-		return errors.Wrapf(ErrBlockChainVerifyCommitVerifyBlock, err.Error())
+		return errors.Wrapf(model.ErrBlockVerify, err.Error())
 	}
 
 	// Height Check

@@ -25,20 +25,24 @@ func TestBlock_GetHash(t *testing.T) {
 	}
 }
 
+type EvilTx struct {
+	*Transaction
+}
+
 func TestBlock_FailedGetHash(t *testing.T) {
 	t.Run("failed nil header", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*Block).Header = nil
 
 		_, err := block.GetHash()
-		assert.EqualError(t, errors.Cause(err), ErrBlockGetHash.Error())
+		assert.EqualError(t, errors.Cause(err), model.ErrBlockHeaderGetHash.Error())
 	})
 	t.Run("failed nil tx in transactions", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*Block).Transactions[0] = nil
 
-		hash, err := block.GetHash()
-		assert.EqualError(t, errors.Cause(err), ErrBlockGetHash.Error(), "%x", hash)
+		_, err := block.GetHash()
+		assert.EqualError(t, errors.Cause(err), model.ErrTransactionGetHash.Error())
 	})
 }
 
@@ -69,7 +73,7 @@ func TestBlock_SignAndVerify(t *testing.T) {
 		err := block.Sign(inValidPub, inValidPriv)
 		assert.Error(t, err)
 
-		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
+		assert.EqualError(t, errors.Cause(block.Verify()), ErrCryptoVerify.Error())
 	})
 	t.Run("failed invalid key and invalid block", func(t *testing.T) {
 		inValidPub := RandomByte()
@@ -79,24 +83,24 @@ func TestBlock_SignAndVerify(t *testing.T) {
 		err := block.Sign(inValidPub, inValidPriv)
 		assert.Error(t, err)
 
-		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
+		assert.EqualError(t, errors.Cause(block.Verify()), ErrCryptoVerify.Error())
 	})
 	t.Run("failed nil signature", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*Block).Signature = nil
 
-		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
+		assert.EqualError(t, errors.Cause(block.Verify()), model.ErrInvalidSignature.Error())
 	})
 	t.Run("failed nil header", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*Block).Header = nil
 
-		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
+		assert.EqualError(t, errors.Cause(block.Verify()), model.ErrBlockGetHash.Error())
 	})
 	t.Run("failed nil tx in transactions", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*Block).Transactions[0] = nil
 
-		assert.EqualError(t, errors.Cause(block.Verify()), ErrBlockVerify.Error())
+		assert.EqualError(t, errors.Cause(block.Verify()), model.ErrBlockGetHash.Error())
 	})
 }

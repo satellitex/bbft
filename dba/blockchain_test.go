@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/convertor"
 	. "github.com/satellitex/bbft/dba"
+	"github.com/satellitex/bbft/model"
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 		block := ValidErrSignedBlock(t)
 
 		err := bc.VerifyCommit(block)
-		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitVerifyBlock.Error())
+		assert.EqualError(t, errors.Cause(err), model.ErrBlockVerify.Error())
 	})
 
 	t.Run("failed empty bc and add verified Block, but height = 0", func(t *testing.T) {
@@ -65,7 +66,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 		block := ValidErrSignedBlock(t)
 
 		err := bc.VerifyCommit(block)
-		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitVerifyBlock.Error())
+		assert.EqualError(t, errors.Cause(err), model.ErrBlockVerify.Error())
 	})
 
 	t.Run("failed exist bc and add verified Block, but height = 0", func(t *testing.T) {
@@ -115,14 +116,14 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 }
 
 func testBlockChain_Commit(t *testing.T, bc BlockChain) {
-	t.Run("failed commit invalid block", func (t *testing.T){
+	t.Run("failed commit invalid block", func(t *testing.T) {
 		err := bc.Commit(RandomBlock(t))
 		require.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommit.Error())
 	})
 
-	t.Run("failed commit valid block", func (t *testing.T){
-		err := bc.Commit(RandomCommitableBlock(t,bc))
-		require.NoError(t,err)
+	t.Run("failed commit valid block", func(t *testing.T) {
+		err := bc.Commit(RandomCommitableBlock(t, bc))
+		require.NoError(t, err)
 	})
 }
 

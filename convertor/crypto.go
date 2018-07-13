@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	ErrCryptoSign = errors.Errorf("Failed Sign by ed25519")
+	ErrCryptoSign   = errors.Errorf("Failed Sign by ed25519")
+	ErrCryptoVerify = errors.Errorf("Failed Verify by ed25519")
 )
 
 func CalcHash(b []byte) []byte {
@@ -20,7 +21,7 @@ func CalcHash(b []byte) []byte {
 
 func Verify(pubkey []byte, message []byte, signature []byte) error {
 	if l := len(pubkey); l != ed25519.PublicKeySize {
-		return errors.Errorf("ed25519: bad private key length: %d, expected %d",
+		return errors.Errorf("ed25519: bad public key length: %d, expected %d",
 			l, ed25519.PublicKeySize)
 	}
 	if ok := ed25519.Verify(pubkey, message, signature); !ok {

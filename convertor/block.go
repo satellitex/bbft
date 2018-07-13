@@ -6,11 +6,6 @@ import (
 	"github.com/satellitex/bbft/proto"
 )
 
-var (
-	ErrBlockVerify  = errors.Errorf("Failed Block Verify")
-	ErrBlockGetHash = errors.Errorf("Failed Get Hash")
-)
-
 type Block struct {
 	*bbft.Block
 }
@@ -41,22 +36,15 @@ func (b *Block) GetSignature() model.Signature {
 
 func (b *Block) GetHash() ([]byte, error) {
 	//TODO 毎回 sha256計算したほうが一気にやるよりはやそう？
-	header := b.GetHeader()
-	if header == nil {
-		return nil, errors.Wrapf(ErrBlockGetHash, "Block.Header is nil")
-	}
 	result, err := b.GetHeader().GetHash()
 	if err != nil {
-		return nil, errors.Wrapf(ErrBlockGetHash, err.Error())
+		return nil, errors.Wrapf(model.ErrBlockHeaderGetHash, err.Error())
 	}
 	for _, tx := range b.GetTransactions() {
-		proto, ok := tx.(*Transaction)
-		if !ok {
-			return nil, errors.Wrapf(ErrBlockGetHash, "Can not cast Transaction model: %#v.", tx)
-		}
-		hash, err := CalcHashFromProto(proto)
+		// Unexpeted Can not cast Transaction of GetTransactions()
+		hash, err := CalcHashFromProto(tx.(*Transaction))
 		if err != nil {
-			return nil, errors.Wrapf(ErrBlockGetHash, err.Error())
+			return nil, errors.Wrapf(model.ErrTransactionGetHash, err.Error())
 		}
 		result = append(result, hash...)
 	}
@@ -66,13 +54,13 @@ func (b *Block) GetHash() ([]byte, error) {
 func (b *Block) Verify() error {
 	hash, err := b.GetHash()
 	if err != nil {
-		return errors.Wrapf(ErrBlockVerify, err.Error())
+		return errors.Wrapf(model.ErrBlockGetHash, err.Error())
 	}
 	if b.Signature == nil {
-		return errors.Wrapf(ErrBlockVerify, "Signature is nil")
+		return errors.Wrapf(model.ErrInvalidSignature, "Signature is nil")
 	}
 	if err = Verify(b.Signature.Pubkey, hash, b.Signature.Signature); err != nil {
-		return errors.Wrapf(ErrBlockVerify, err.Error())
+		return errors.Wrapf(ErrCryptoVerify, err.Error())
 	}
 	return nil
 }
@@ -80,14 +68,14 @@ func (b *Block) Verify() error {
 func (b *Block) Sign(pubKey []byte, privKey []byte) error {
 	hash, err := b.GetHash()
 	if err != nil {
-		return err
+		return errors.Wrapf(model.ErrBlockGetHash, err.Error())
 	}
 	signature, err := Sign(privKey, hash)
 	if err != nil {
-		return err
+		return errors.Wrapf(ErrCryptoSign, err.Error())
 	}
 	if err := Verify(pubKey, hash, signature); err != nil {
-		return err
+		return errors.Wrapf(ErrCryptoVerify, err.Error())
 	}
 	b.Signature = &bbft.Signature{Pubkey: pubKey, Signature: signature}
 	return nil

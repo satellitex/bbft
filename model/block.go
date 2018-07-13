@@ -1,5 +1,17 @@
 package model
 
+import "github.com/pkg/errors"
+
+var (
+	ErrInvalidBlock = errors.Errorf("Failed Invalid Block")
+	ErrBlockGetHash = errors.Errorf("Failed Block GetHash")
+	ErrBlockVerify  = errors.Errorf("Failed Block Verify")
+	ErrBlockSign    = errors.Errorf("Failed Block Sign")
+
+	ErrInvalidBlockHeader = errors.Errorf("Failed Invalid BlockHeader")
+	ErrBlockHeaderGetHash = errors.Errorf("Failed BlockHeader GetHash")
+)
+
 type Block interface {
 	GetHeader() BlockHeader
 	GetTransactions() []Transaction

@@ -30,7 +30,7 @@ func RandomCommitBlock(t *testing.T, bc dba.BlockChain, height int) dba.BlockCha
 	for i := 0; i < height; i++ {
 		block := RandomCommitableBlock(t, bc)
 		err := bc.Commit(block)
-		require.NoError(t,err)
+		require.NoError(t, err)
 	}
 	return bc
 }

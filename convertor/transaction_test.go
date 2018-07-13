@@ -34,17 +34,17 @@ func TestTransaction_Verfy(t *testing.T) {
 	})
 	t.Run("failed invalid signature", func(t *testing.T) {
 		tx := RandomInvalidTx(t)
-		assert.EqualError(t, errors.Cause(tx.Verify()), ErrTransactionVerify.Error())
+		assert.EqualError(t, errors.Cause(tx.Verify()), ErrCryptoVerify.Error())
 	})
 	t.Run("failed not signed", func(t *testing.T) {
 		tx, err := NewTxModelBuilder().Message(RandomStr()).Build()
 		require.NoError(t, err)
-		assert.EqualError(t, errors.Cause(tx.Verify()), ErrTransactionVerify.Error())
+		assert.EqualError(t, errors.Cause(tx.Verify()), ErrInvalidSignatures.Error())
 	})
 	t.Run("failed nil signature", func(t *testing.T) {
 		tx, err := NewTxModelBuilder().Message(RandomStr()).Build()
 		require.NoError(t, err)
 		tx.(*Transaction).Signatures = make([]*bbft.Signature, 5)
-		assert.EqualError(t, errors.Cause(tx.Verify()), ErrTransactionVerify.Error())
+		assert.EqualError(t, errors.Cause(tx.Verify()), model.ErrInvalidSignature.Error())
 	})
 }

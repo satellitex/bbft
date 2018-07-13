@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"fmt"
-	"github.com/pkg/errors"
 	. "github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/proto"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ func TestSignAndVerify(t *testing.T) {
 func TestFailedSign(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	_, err := Sign(nil, hash)
-	assert.EqualError(t, errors.Cause(err), ErrCryptoSign.Error())
+	assert.Error(t, err)
 }
 
 func TestFailedVerifyNilPubkey(t *testing.T) {

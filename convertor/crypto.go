@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrCryptoSign   = errors.Errorf("Failed Sign by ed25519")
-	ErrCryptoVerify = errors.Errorf("Failed Verify by ed25519")
+	ErrCryptoSign        = errors.Errorf("Failed Sign by ed25519")
+	ErrCryptoVerify      = errors.Errorf("Failed Verify by ed25519")
+	ErrCalcHashFromProto = errors.Errorf("Failed CalcHashFromProto sha256")
 )
 
 func CalcHash(b []byte) []byte {
@@ -36,8 +37,7 @@ func Verify(pubkey []byte, message []byte, signature []byte) error {
 
 func Sign(privkey []byte, message []byte) ([]byte, error) {
 	if l := len(privkey); l != ed25519.PrivateKeySize {
-		return nil, errors.Wrapf(ErrCryptoSign,
-			"ed25519: bad private key length: %d, expected %d",
+		return nil, errors.Errorf("ed25519: bad private key length: %d, expected %d",
 			l, ed25519.PrivateKeySize)
 	}
 	return ed25519.Sign(privkey, message), nil
@@ -58,7 +58,7 @@ var (
 func CalcHashFromProto(msg proto.Message) ([]byte, error) {
 	pb, err := proto.Marshal(msg)
 	if err != nil {
-		return nil, errors.Wrap(ErrMarshalProtocolBuffer, err.Error())
+		return nil, err
 	}
 	return CalcHash(pb), nil
 }

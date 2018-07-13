@@ -1,18 +1,16 @@
 package dba
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 	"sync"
 )
 
-var (
-	ErrBlockChainCommit = errors.New("Failed Blockchain Commit")
-)
-
 type BlockChain interface {
 	Top() (model.Block, bool)
 	Commit(block model.Block) error
+	VerifyCommit(block model.Block) error
 }
 
 type BlockChainOnMemory struct {
@@ -31,11 +29,7 @@ func NewBlockChainOnMemory() BlockChain {
 	}
 }
 
-func (b *BlockChainOnMemory) GetIndex(block model.Block) (int64, bool) {
-	hash, err := block.GetHash()
-	if err != nil {
-		return -1, false
-	}
+func (b *BlockChainOnMemory) getIndex(hash []byte) (int64, bool) {
 	id, ok := b.hashIndex[string(hash)]
 	if ok {
 		return id, true
@@ -44,9 +38,6 @@ func (b *BlockChainOnMemory) GetIndex(block model.Block) (int64, bool) {
 }
 
 func (b *BlockChainOnMemory) Top() (model.Block, bool) {
-	defer b.m.Unlock()
-	b.m.Lock()
-
 	res, ok := b.db[b.counter-1]
 	if !ok {
 		return nil, false
@@ -54,26 +45,59 @@ func (b *BlockChainOnMemory) Top() (model.Block, bool) {
 	return res, true
 }
 
+var (
+	ErrBlockChainVerifyCommitInvalidHeight       = errors.New("Failed Invalid Height of Block")
+	ErrBlockChainVerifyCommitInvalidPreBlockHash = errors.New("Failed Invalid PreBlockHash of Block")
+	ErrBlockChainVerifyCommitInvalidCreatedTime  = errors.New("Failed Invalid CreatedTime of Block")
+	ErrBlockChainVerifyCommitAlreadyExist        = errors.New("Failed Alraedy Exist Block")
+	ErrBlockChainVerifyCommit                    = errors.New("Failed Blockchain Verify Commit")
+	ErrBlockChainCommit                          = errors.New("Failed Blockchain Commit")
+)
+
+func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
+	// Verify block
+	if err := block.Verify(); err != nil {
+		return errors.Wrapf(model.ErrBlockVerify, err.Error())
+	}
+
+	// Height Check
+	if height := block.GetHeader().GetHeight(); height != b.counter {
+		return errors.Wrapf(ErrBlockChainVerifyCommitInvalidHeight, "height: %d, expected %d", height, b.counter)
+	}
+
+	top, ok := b.Top()
+	// First Commit is always OK
+	if ok {
+		// Must PreBlockHash == top.Hash
+		if preHash := block.GetHeader().GetPreBlockHash(); !bytes.Equal(preHash, model.MustGetHash(top)) {
+			return errors.Wrapf(ErrBlockChainVerifyCommitInvalidPreBlockHash,
+				"block preBlockHash is not valid\npreBlockHash: %x\nexpected: %x\n",
+				preHash, model.MustGetHash(top))
+		}
+		// Must createdTime > top.createdTime
+		if createdTime := block.GetHeader().GetCreatedTime(); createdTime <= top.GetHeader().GetCreatedTime() {
+			return errors.Wrapf(ErrBlockChainVerifyCommitInvalidCreatedTime,
+				"block CreatedTime is not valid\ncreatedTime: %d\npreBlockCreatedTime: %d",
+				createdTime, top.GetHeader().GetCreatedTime())
+		}
+		// Already exist check
+		if id, ok := b.getIndex(model.MustGetHash(block)); ok {
+			return errors.Wrapf(ErrBlockChainVerifyCommitAlreadyExist,
+				"Already exist block %x is %d-th Block", model.MustGetHash(block), id)
+		}
+	}
+	return nil
+}
+
 func (b *BlockChainOnMemory) Commit(block model.Block) error {
 	defer b.m.Unlock()
 	b.m.Lock()
-
-	if _, ok := b.GetIndex(block); !ok {
-		hash, err := block.GetHash()
-		if err != nil {
-			return errors.Wrapf(ErrBlockChainCommit, err.Error())
-		}
-		b.hashIndex[string(hash)] = b.counter
-		b.db[b.counter] = block
-		b.counter += 1
-	} else {
-		hash, err := block.GetHash()
-		if err != nil {
-			return errors.Wrapf(ErrBlockChainCommit,
-				"Invalid block by commit : %s", err.Error())
-		}
-		return errors.Wrapf(ErrBlockChainCommit,
-			"Already exist block %x", hash)
+	if err := b.VerifyCommit(block); err != nil {
+		return errors.Wrapf(ErrBlockChainVerifyCommit, err.Error())
 	}
+
+	b.hashIndex[string(model.MustGetHash(block))] = b.counter
+	b.db[b.counter] = block
+	b.counter += 1
 	return nil
 }

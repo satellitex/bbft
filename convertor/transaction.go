@@ -6,7 +6,9 @@ import (
 	"github.com/satellitex/bbft/proto"
 )
 
-var ErrTransactionVerify = errors.Errorf("Failed Transaction Verify")
+var (
+	ErrInvalidSignatures = errors.Errorf("Failed Invalid Signatures")
+)
 
 type Transaction struct {
 	*bbft.Transaction
@@ -21,13 +23,17 @@ func (t *Transaction) GetPayload() model.TransactionPayload {
 }
 
 func (t *Transaction) GetHash() ([]byte, error) {
-	return CalcHashFromProto(t.Payload)
+	res, err := CalcHashFromProto(t.Payload)
+	if err != nil {
+		return nil, errors.Wrapf(ErrCalcHashFromProto, err.Error())
+	}
+	return res, nil
 }
 
 func (t *Transaction) GetSignatures() []model.Signature {
 	ret := make([]model.Signature, len(t.Signatures))
 	for i, sig := range t.Signatures {
-		ret[i] = Signature{sig}
+		ret[i] = &Signature{sig}
 	}
 	return ret
 }
@@ -35,17 +41,17 @@ func (t *Transaction) GetSignatures() []model.Signature {
 func (t *Transaction) Verify() error {
 	hash, err := t.GetHash()
 	if err != nil {
-		return errors.Wrapf(ErrTransactionVerify, err.Error())
+		return errors.Wrapf(model.ErrTransactionGetHash, err.Error())
 	}
-	if len(t.Signatures) == 0 {
-		return errors.Wrapf(ErrTransactionVerify, "Signature length is 0")
+	if len(t.GetSignatures()) == 0 {
+		return errors.Wrapf(ErrInvalidSignatures, "Signatures length is 0")
 	}
 	for i, signature := range t.Signatures {
 		if signature == nil {
-			return errors.Wrapf(ErrTransactionVerify, "%d-th Signature is nil", i)
+			return errors.Wrapf(model.ErrInvalidSignature, "%d-th Signature is nil", i)
 		}
 		if err := Verify(signature.Pubkey, hash, signature.Signature); err != nil {
-			return errors.Wrapf(ErrTransactionVerify, err.Error())
+			return errors.Wrapf(ErrCryptoVerify, err.Error())
 		}
 	}
 	return nil

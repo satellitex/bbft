@@ -22,9 +22,8 @@ func (v *StatefulValidator) Validate(block model.Block) error {
 		return errors.Wrapf(ErrStatefulValidate,
 			"Can not cast dba.BlockChainOnMemory %#v", v.bc)
 	}
-	if id, ok := bc.GetIndex(block); ok {
-		return errors.Wrapf(ErrStatefulValidate,
-			"Block %v is Already exist %d-th Blcok", block, id)
+	if err := bc.VerifyCommit(block); err != nil {
+		return errors.Wrapf(ErrStatefulValidate, err.Error())
 	}
 	return nil
 }
@@ -40,11 +39,11 @@ func (v *StatelessValidator) Validate(block model.Block) error {
 	var result error
 	for _, tx := range block.GetTransactions() {
 		if err := tx.Verify(); err != nil {
-			result = multierr.Append(result, err)
+			result = multierr.Append(result, errors.Wrapf(model.ErrTransactionVerify, err.Error()))
 		}
 	}
 	if err := block.Verify(); err != nil {
-		result = multierr.Append(result, err)
+		result = multierr.Append(result, errors.Wrapf(model.ErrBlockVerify, err.Error()))
 	}
 	if result != nil {
 		return errors.Wrapf(ErrStatelessValidate, result.Error())

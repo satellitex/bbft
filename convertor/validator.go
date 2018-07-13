@@ -39,11 +39,11 @@ func (v *StatelessValidator) Validate(block model.Block) error {
 	var result error
 	for _, tx := range block.GetTransactions() {
 		if err := tx.Verify(); err != nil {
-			result = multierr.Append(result, err)
+			result = multierr.Append(result, errors.Wrapf(model.ErrTransactionVerify, err.Error()))
 		}
 	}
 	if err := block.Verify(); err != nil {
-		result = multierr.Append(result, err)
+		result = multierr.Append(result, errors.Wrapf(model.ErrBlockVerify, err.Error()))
 	}
 	if result != nil {
 		return errors.Wrapf(ErrStatelessValidate, result.Error())

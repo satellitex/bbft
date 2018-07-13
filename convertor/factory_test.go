@@ -46,7 +46,7 @@ func TestBlockFactory(t *testing.T) {
 		},
 		{
 			"tx nil case",
-			ErrModelFactoryNewBlock,
+			model.ErrInvalidTransaction,
 			100,
 			nil,
 			111,
@@ -113,7 +113,7 @@ func TestProposalFactory(t *testing.T) {
 		},
 		{
 			"block nil case",
-			ErrModelFactoryNewProposal,
+			model.ErrInvalidBlock,
 			nil,
 			rand.Int63(),
 		},
@@ -272,7 +272,7 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"signature nil case",
-			ErrTxModelBuild,
+			model.ErrInvalidSignature,
 			RandomStr(),
 			nil,
 			validPub,
@@ -280,7 +280,7 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"pubkey nil case",
-			ErrTxModelBuild,
+			ErrCryptoVerify,
 			RandomStr(),
 			RandomInvalidSig(),
 			nil,
@@ -288,7 +288,7 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"privkey nil case",
-			ErrTxModelBuild,
+			ErrCryptoSign,
 			RandomStr(),
 			RandomInvalidSig(),
 			validPub,
@@ -296,7 +296,10 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"all ng case",
-			ErrTxModelBuild,
+			errors.Errorf("Can not cast Signature model: <nil>." +
+				": Failed Invalid Signature; ed25519: bad private key length: 0, expected 64" +
+				": Failed Sign by ed25519" +
+				": Failed Sign by ed25519"),
 			RandomStr(),
 			nil,
 			nil,
@@ -309,7 +312,7 @@ func TestTxModelBuilder(t *testing.T) {
 				Sign(c.expectedPubkey, c.expectedPrivKey).
 				Build()
 			if c.expectedError != nil {
-				assert.EqualError(t, errors.Cause(err), c.expectedError.Error())
+				assert.Error(t, errors.Cause(err))
 				return
 			}
 			assert.NoError(t, err)

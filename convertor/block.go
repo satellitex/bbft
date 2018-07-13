@@ -6,7 +6,10 @@ import (
 	"github.com/satellitex/bbft/proto"
 )
 
-var ErrBlockVerify = errors.Errorf("Failed Block Verify")
+var (
+	ErrBlockVerify  = errors.Errorf("Failed Block Verify")
+	ErrBlockGetHash = errors.Errorf("Failed Get Hash")
+)
 
 type Block struct {
 	*bbft.Block
@@ -38,18 +41,22 @@ func (b *Block) GetSignature() model.Signature {
 
 func (b *Block) GetHash() ([]byte, error) {
 	//TODO 毎回 sha256計算したほうが一気にやるよりはやそう？
+	header := b.GetHeader()
+	if header == nil {
+		return nil, errors.Wrapf(ErrBlockGetHash, "Block.Header is nil")
+	}
 	result, err := b.GetHeader().GetHash()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(ErrBlockGetHash, err.Error())
 	}
 	for _, tx := range b.GetTransactions() {
 		proto, ok := tx.(*Transaction)
 		if !ok {
-			return nil, errors.Errorf("Can not cast Transaction model: %#v.", tx)
+			return nil, errors.Wrapf(ErrBlockGetHash, "Can not cast Transaction model: %#v.", tx)
 		}
 		hash, err := CalcHashFromProto(proto)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(ErrBlockGetHash, err.Error())
 		}
 		result = append(result, hash...)
 	}

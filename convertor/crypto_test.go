@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/satellitex/bbft/proto"
 )
 
 func TestCalcHash(t *testing.T) {
@@ -57,4 +58,18 @@ func TestFailedVerifyNilHash(t *testing.T) {
 	require.NoError(t, err)
 	assert.Error(t, Verify(pubkey, nil, signature),
 		"pubkey: %x \nhash: %x\nsignature %x", pubkey, nil, signature)
+}
+
+func TestSuccessdVerifyNilMarshal(t *testing.T) {
+	tx := &Transaction{&bbft.Transaction{}}
+	_, err := CalcHashFromProto(tx)
+
+	assert.NoError(t, err)
+}
+
+func TestFailedVerifyNilMarshal(t *testing.T) {
+	tx := &Transaction{}
+	_, err := CalcHashFromProto(tx)
+
+	assert.Error(t, err)
 }

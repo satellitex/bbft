@@ -22,9 +22,8 @@ func (v *StatefulValidator) Validate(block model.Block) error {
 		return errors.Wrapf(ErrStatefulValidate,
 			"Can not cast dba.BlockChainOnMemory %#v", v.bc)
 	}
-	if id, ok := bc.GetIndex(block); ok {
-		return errors.Wrapf(ErrStatefulValidate,
-			"Block %v is Already exist %d-th Blcok", block, id)
+	if err := bc.VerifyCommit(block); err != nil {
+		return errors.Wrapf(ErrStatefulValidate, err.Error())
 	}
 	return nil
 }

@@ -1,93 +1,15 @@
-package convertor
+package convertor_test
 
 import (
 	"github.com/pkg/errors"
+	. "github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/model"
+	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	rnd "math/rand"
-	"strconv"
+	"math/rand"
 	"testing"
 )
-
-func randomStr() string {
-	return strconv.FormatUint(rnd.Uint64(), 36)
-}
-
-func randomValidTx(t *testing.T) model.Transaction {
-	validPub, validPriv := NewKeyPair()
-	tx, err := NewTxModelBuilder().
-		Message(randomStr()).
-		Sign(validPub, validPriv).
-		build()
-	require.NoError(t, err)
-	return tx
-}
-
-func randomInvalidTx(t *testing.T) model.Transaction {
-	tx, err := NewTxModelBuilder().
-		Message(randomStr()).
-		Signature(randomInvalidSig()).
-		build()
-	require.NoError(t, err)
-	return tx
-}
-
-func randomValidTxs(t *testing.T) []model.Transaction {
-	txs := make([]model.Transaction, 30)
-	for id, _ := range txs {
-		txs[id] = randomValidTx(t)
-	}
-	return txs
-}
-
-func randomInvalidTxs(t *testing.T) []model.Transaction {
-	txs := make([]model.Transaction, 30)
-	for id, _ := range txs {
-		txs[id] = randomInvalidTx(t)
-	}
-	return txs
-}
-
-func randomTxs(t *testing.T) []model.Transaction {
-	return randomValidTxs(t)
-}
-
-func randomByte() []byte {
-	b, _ := NewKeyPair()
-	return b
-}
-
-func randomInvalidSig() model.Signature {
-	pub, sig := NewKeyPair()
-	return (&ModelFactory{}).NewSignature(pub, sig)
-}
-
-type Hasher interface {
-	GetHash() ([]byte, error)
-}
-
-func getHash(t *testing.T, hasher Hasher) []byte {
-	hash, err := hasher.GetHash()
-	require.NoError(t, err)
-	return hash
-}
-
-func randomValidBlock(t *testing.T) model.Block {
-	block, err := NewModelFactory().NewBlock(rnd.Int63(), randomByte(), rnd.Int63(), randomValidTxs(t))
-	require.NoError(t, err)
-	return block
-}
-
-func randomInvalidBlock(t *testing.T) model.Block {
-	block, err := NewModelFactory().NewBlock(rnd.Int63(), randomByte(), rnd.Int63(), randomInvalidTxs(t))
-	require.NoError(t, err)
-	return block
-}
-
-func randomBlock(t *testing.T) model.Block {
-	return randomValidBlock(t)
-}
 
 func TestBlockFactory(t *testing.T) {
 	for _, c := range []struct {
@@ -104,7 +26,7 @@ func TestBlockFactory(t *testing.T) {
 			10,
 			[]byte("preBlockHash"),
 			5,
-			randomTxs(t),
+			RandomTxs(t),
 		},
 		{
 			"case 2",
@@ -112,7 +34,7 @@ func TestBlockFactory(t *testing.T) {
 			999999999999,
 			[]byte(""),
 			0,
-			randomTxs(t),
+			RandomTxs(t),
 		},
 		{
 			"hash nil case no problem",
@@ -120,7 +42,7 @@ func TestBlockFactory(t *testing.T) {
 			0,
 			nil,
 			999999999999,
-			randomTxs(t),
+			RandomTxs(t),
 		},
 		{
 			"tx nil case",
@@ -155,7 +77,7 @@ func TestBlockFactory(t *testing.T) {
 			}
 			assert.NoError(t, err)
 			for id, tx := range block.GetTransactions() {
-				assert.Equal(t, getHash(t, c.expectedTxs[id]), getHash(t, tx))
+				assert.Equal(t, GetHash(t, c.expectedTxs[id]), GetHash(t, tx))
 			}
 			assert.Equal(t, c.expectedHeight, block.GetHeader().GetHeight())
 			assert.Equal(t, c.expectedCreatedTime, block.GetHeader().GetCreatedTime())
@@ -174,31 +96,31 @@ func TestProposalFactory(t *testing.T) {
 		{
 			"case 1",
 			nil,
-			randomBlock(t),
-			rnd.Int63(),
+			RandomBlock(t),
+			rand.Int63(),
 		},
 		{
 			"case 2",
 			nil,
-			randomBlock(t),
-			rnd.Int63(),
+			RandomBlock(t),
+			rand.Int63(),
 		},
 		{
 			"case 3",
 			nil,
-			randomBlock(t),
-			rnd.Int63(),
+			RandomBlock(t),
+			rand.Int63(),
 		},
 		{
 			"block nil case",
 			ErrModelFactoryNewProposal,
 			nil,
-			rnd.Int63(),
+			rand.Int63(),
 		},
 		{
 			"round -1 case",
 			nil,
-			randomBlock(t),
+			RandomBlock(t),
 			-1,
 		},
 	} {
@@ -209,7 +131,7 @@ func TestProposalFactory(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			assert.Equal(t, getHash(t, c.expectedBlock), getHash(t, proposal.GetBlock()))
+			assert.Equal(t, GetHash(t, c.expectedBlock), GetHash(t, proposal.GetBlock()))
 			assert.Equal(t, c.expectedRound, proposal.GetRound())
 		})
 	}
@@ -225,22 +147,22 @@ func TestVoteMessageFactory(t *testing.T) {
 		{
 			"case 1",
 			nil,
-			randomByte(),
+			RandomByte(),
 		},
 		{
 			"case 2",
 			nil,
-			randomByte(),
+			RandomByte(),
 		},
 		{
 			"case 3",
 			nil,
-			randomByte(),
+			RandomByte(),
 		},
 		{
 			"case 4",
 			nil,
-			randomByte(),
+			RandomByte(),
 		},
 		{
 			"hash nil case no problem",
@@ -264,37 +186,37 @@ func TestSignatureFactory(t *testing.T) {
 	}{
 		{
 			"case 1",
-			randomByte(),
-			randomByte(),
+			RandomByte(),
+			RandomByte(),
 		},
 		{
 			"case 2",
-			randomByte(),
-			randomByte(),
+			RandomByte(),
+			RandomByte(),
 		},
 		{
 			"case 3",
-			randomByte(),
-			randomByte(),
+			RandomByte(),
+			RandomByte(),
 		},
 		{
 			"case 4",
-			randomByte(),
-			randomByte(),
+			RandomByte(),
+			RandomByte(),
 		},
 		{
 			"case 5",
-			randomByte(),
-			randomByte(),
+			RandomByte(),
+			RandomByte(),
 		},
 		{
 			"pub nil case no problem",
 			nil,
-			randomByte(),
+			RandomByte(),
 		},
 		{
 			"sig nil case no problem",
-			randomByte(),
+			RandomByte(),
 			nil,
 		},
 	} {
@@ -319,24 +241,24 @@ func TestTxModelBuilder(t *testing.T) {
 		{
 			"case 1",
 			nil,
-			randomStr(),
-			randomInvalidSig(),
+			RandomStr(),
+			RandomInvalidSig(),
 			validPub,
 			validPriv,
 		},
 		{
 			"case 2",
 			nil,
-			randomStr(),
-			randomInvalidSig(),
+			RandomStr(),
+			RandomInvalidSig(),
 			validPub,
 			validPriv,
 		},
 		{
 			"case 3",
 			nil,
-			randomStr(),
-			randomInvalidSig(),
+			RandomStr(),
+			RandomInvalidSig(),
 			validPub,
 			validPriv,
 		},
@@ -344,14 +266,14 @@ func TestTxModelBuilder(t *testing.T) {
 			"empty string case is valid",
 			nil,
 			"",
-			randomInvalidSig(),
+			RandomInvalidSig(),
 			validPub,
 			validPriv,
 		},
 		{
 			"signature nil case",
 			ErrTxModelBuild,
-			randomStr(),
+			RandomStr(),
 			nil,
 			validPub,
 			validPriv,
@@ -359,23 +281,23 @@ func TestTxModelBuilder(t *testing.T) {
 		{
 			"pubkey nil case",
 			ErrTxModelBuild,
-			randomStr(),
-			randomInvalidSig(),
+			RandomStr(),
+			RandomInvalidSig(),
 			nil,
 			validPriv,
 		},
 		{
 			"privkey nil case",
 			ErrTxModelBuild,
-			randomStr(),
-			randomInvalidSig(),
+			RandomStr(),
+			RandomInvalidSig(),
 			validPub,
 			nil,
 		},
 		{
 			"all ng case",
 			ErrTxModelBuild,
-			randomStr(),
+			RandomStr(),
 			nil,
 			nil,
 			nil,
@@ -385,7 +307,7 @@ func TestTxModelBuilder(t *testing.T) {
 			tx, err := NewTxModelBuilder().Message(c.expectedMessage).
 				Signature(c.expectedSignature).
 				Sign(c.expectedPubkey, c.expectedPrivKey).
-				build()
+				Build()
 			if c.expectedError != nil {
 				assert.EqualError(t, errors.Cause(err), c.expectedError.Error())
 				return
@@ -396,7 +318,7 @@ func TestTxModelBuilder(t *testing.T) {
 			assert.Equal(t, c.expectedSignature.GetPubkey(), tx.GetSignatures()[0].GetPubkey())
 			assert.Equal(t, c.expectedSignature.GetSignature(), tx.GetSignatures()[0].GetSignature())
 			assert.Equal(t, c.expectedPubkey, tx.GetSignatures()[1].GetPubkey())
-			signature, err := Sign(c.expectedPrivKey, getHash(t, tx))
+			signature, err := Sign(c.expectedPrivKey, GetHash(t, tx))
 			require.NoError(t, err)
 			assert.Equal(t, signature, tx.GetSignatures()[1].GetSignature())
 		})

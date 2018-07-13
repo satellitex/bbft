@@ -126,7 +126,7 @@ func (b *TxModelBuilder) Message(msg string) *TxModelBuilder {
 	return b
 }
 
-func (b *TxModelBuilder) build() (model.Transaction, error) {
+func (b *TxModelBuilder) Build() (model.Transaction, error) {
 	if b.err != nil {
 		return nil, errors.Wrapf(ErrTxModelBuild, b.err.Error())
 	}

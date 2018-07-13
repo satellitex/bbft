@@ -7,11 +7,6 @@ import (
 	"sync"
 )
 
-var (
-	ErrBlockChainCommit       = errors.New("Failed Blockchain Commit")
-	ErrBlockChainVerifyCommit = errors.New("Failed Blockchain Verify Commit")
-)
-
 type BlockChain interface {
 	Top() (model.Block, bool)
 	Commit(block model.Block) error
@@ -50,45 +45,43 @@ func (b *BlockChainOnMemory) Top() (model.Block, bool) {
 	return res, true
 }
 
-func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
-	hash, err := block.GetHash()
-	if err != nil {
-		return errors.Wrapf(ErrBlockChainVerifyCommit, err.Error())
-	}
-	// Already exist check
-	if id, ok := b.getIndex(hash); ok {
-		return errors.Wrapf(ErrBlockChainVerifyCommit,
-			"Already exist block %x is %d-th Block", hash, id)
-	}
+var (
+	ErrBlockChainVerifyCommitVerifyBlock = errors.New("Failed Verify Block")
+	ErrBlockChainVerifyCommitHeightCheck = errors.New("Failed Block Height is not valid")
+	ErrBlockChainVerifyCommit            = errors.New("Failed Blockchain Verify Commit")
+	//TODO
+)
 
+func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 	// Verify block
-	if err = block.Verify(); err != nil {
-		return errors.Wrapf(ErrBlockChainVerifyCommit, err.Error())
+	if err := block.Verify(); err != nil {
+		return errors.Wrapf(ErrBlockChainVerifyCommitVerifyBlock, err.Error())
 	}
 
 	// Height Check
 	if height := block.GetHeader().GetHeight(); height != b.counter {
-		return errors.Wrapf(ErrBlockChainVerifyCommit, "block Height is not valid, height: %d, expected %d", height, b.counter)
+		return errors.Wrapf(ErrBlockChainVerifyCommitHeightCheck, "height: %d, expected %d", height, b.counter)
 	}
 
 	top, ok := b.Top()
 	// First Commit is always OK
 	if ok {
-		hash, err := top.GetHash()
-		if err != nil {
-			panic("Unexpected Top Block GetHash" + err.Error())
-		}
 		// Must PreBlockHash == top.Hash
-		if preHash := block.GetHeader().GetPreBlockHash(); !bytes.Equal(preHash, hash) {
+		if preHash := block.GetHeader().GetPreBlockHash(); !bytes.Equal(preHash, model.MustGetHash(top)) {
 			return errors.Wrapf(ErrBlockChainVerifyCommit,
 				"block preBlockHash is not valid\npreBlockHash: %x\nexpected: %x\n",
-				preHash, hash)
+				preHash, model.MustGetHash(top))
 		}
 		// Must createdTime > top.createdTime
 		if createdTime := block.GetHeader().GetCreatedTime(); createdTime <= top.GetHeader().GetCreatedTime() {
 			return errors.Wrapf(ErrBlockChainVerifyCommit,
 				"block CreatedTime is not valid\ncreatedTime: %d\npreBlockCreatedTime: %d",
 				createdTime, top.GetHeader().GetCreatedTime())
+		}
+		// Already exist check
+		if id, ok := b.getIndex(model.MustGetHash(block)); ok {
+			return errors.Wrapf(ErrBlockChainVerifyCommit,
+				"Already exist block %x is %d-th Block", model.MustGetHash(block), id)
 		}
 	}
 	return nil
@@ -98,14 +91,10 @@ func (b *BlockChainOnMemory) Commit(block model.Block) error {
 	defer b.m.Unlock()
 	b.m.Lock()
 	if err := b.VerifyCommit(block); err != nil {
-		return errors.Wrapf(ErrBlockChainCommit, err.Error())
+		return errors.Wrapf(ErrBlockChainVerifyCommit, err.Error())
 	}
 
-	hash, err := block.GetHash()
-	if err != nil {
-		return errors.Wrapf(ErrBlockChainCommit, err.Error())
-	}
-	b.hashIndex[string(hash)] = b.counter
+	b.hashIndex[string(model.MustGetHash(block))] = b.counter
 	b.db[b.counter] = block
 	b.counter += 1
 	return nil

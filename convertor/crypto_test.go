@@ -1,13 +1,14 @@
-package convertor
+package convertor_test
 
 import (
 	"testing"
 
 	"fmt"
 	"github.com/pkg/errors"
+	. "github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/satellitex/bbft/proto"
 )
 
 func TestCalcHash(t *testing.T) {

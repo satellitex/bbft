@@ -3,8 +3,9 @@ package model
 import "github.com/pkg/errors"
 
 var (
-	ErrStatefulValidate  = errors.Errorf("Failed StatefulValidator Validate")
-	ErrStatelessValidate = errors.Errorf("Failed StatelessValidator Validate")
+	ErrStatefulValidate       = errors.Errorf("Failed StatefulValidator Validate")
+	ErrStatelessBlockValidate = errors.Errorf("Failed StatelessBlockValidator Validate")
+	ErrStatelessTxValidate    = errors.Errorf("Failed StatelessTxValidator Validate")
 )
 
 type StatefulValidator interface {
@@ -12,5 +13,6 @@ type StatefulValidator interface {
 }
 
 type StatelessValidator interface {
-	Validate(block Block) error
+	BlockValidate(block Block) error
+	TxValidate(tx Transaction) error
 }

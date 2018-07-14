@@ -51,18 +51,28 @@ func NewStatelessValidator() model.StatelessValidator {
 	return &StatelessValidator{}
 }
 
-func (v *StatelessValidator) Validate(block model.Block) error {
+func (v *StatelessValidator) BlockValidate(block model.Block) error {
 	var result error
 	if block == nil {
 		return errors.Wrapf(model.ErrInvalidBlock, "Block is nil")
 	}
 	for _, tx := range block.GetTransactions() {
-		if err := tx.Verify(); err != nil {
-			result = multierr.Append(result, errors.Wrapf(model.ErrTransactionVerify, err.Error()))
+		if err := v.TxValidate(tx); err != nil {
+			result = multierr.Append(result, errors.Wrapf(model.ErrStatelessTxValidate, err.Error()))
 		}
 	}
 	if err := block.Verify(); err != nil {
 		result = multierr.Append(result, errors.Wrapf(model.ErrBlockVerify, err.Error()))
 	}
 	return result
+}
+
+func (v *StatelessValidator) TxValidate(tx model.Transaction) error {
+	if tx == nil {
+		return errors.Wrapf(model.ErrInvalidTransaction, "tx is nil")
+	}
+	if err := tx.Verify(); err != nil {
+		return errors.Wrapf(model.ErrTransactionVerify, err.Error())
+	}
+	return nil
 }

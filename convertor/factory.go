@@ -9,13 +9,6 @@ import (
 
 type ModelFactory struct{}
 
-var (
-	ErrModelFactoryNewBlock       = errors.New("Failed Create model.Block")
-	ErrModelFactoryNewProposal    = errors.New("Failed Create model.Proposal")
-	ErrModelFactoryNewVoteMessage = errors.New("Failed Create model.VoteMessage")
-	ErrTxModelBuild               = errors.Errorf("Failed build TxModelBuildeer has error")
-)
-
 func NewModelFactory() model.ModelFactory {
 	return &ModelFactory{}
 }
@@ -25,7 +18,7 @@ func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime i
 	for id, tx := range txs {
 		tmp, ok := tx.(*Transaction)
 		if !ok {
-			return nil, errors.Wrapf(ErrModelFactoryNewBlock,
+			return nil, errors.Wrapf(model.ErrInvalidTransaction,
 				"Can not cast Transaction model: %#v.", tx)
 		}
 		ptxs[id] = tmp.Transaction
@@ -46,7 +39,7 @@ func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime i
 func (_ *ModelFactory) NewProposal(block model.Block, round int64) (model.Proposal, error) {
 	b, ok := block.(*Block)
 	if !ok {
-		return nil, errors.Wrapf(ErrModelFactoryNewProposal,
+		return nil, errors.Wrapf(model.ErrInvalidBlock,
 			"Can not cast Block model: %#v.", block)
 	}
 	return &Proposal{
@@ -94,7 +87,7 @@ func NewTxModelBuilder() *TxModelBuilder {
 func (b *TxModelBuilder) Signature(sig model.Signature) *TxModelBuilder {
 	signature, ok := sig.(*Signature)
 	if !ok {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Signature: Can not cast Signature model: %#v.", sig))
+		b.err = multierr.Append(b.err, errors.Wrapf(model.ErrInvalidSignature, "Can not cast Signature model: %#v.", sig))
 		return b
 	}
 	b.Signatures = append(b.Signatures, signature.Signature)
@@ -104,14 +97,17 @@ func (b *TxModelBuilder) Signature(sig model.Signature) *TxModelBuilder {
 func (b *TxModelBuilder) Sign(pubkey []byte, privateKey []byte) *TxModelBuilder {
 	hash, err := b.GetHash()
 	if err != nil {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
+		b.err = multierr.Append(b.err, errors.Wrapf(model.ErrBlockGetHash, err.Error()))
+		return b
 	}
 	signature, err := Sign(privateKey, hash)
 	if err != nil {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
+		b.err = multierr.Append(b.err, errors.Wrapf(ErrCryptoSign, err.Error()))
+		return b
 	}
 	if err := Verify(pubkey, hash, signature); err != nil {
-		b.err = multierr.Append(b.err, errors.Errorf("Failed Sign: %s", err.Error()))
+		b.err = multierr.Append(b.err, errors.Wrapf(ErrCryptoVerify, err.Error()))
+		return b
 	}
 	b.Signatures = append(b.Signatures,
 		&bbft.Signature{
@@ -126,9 +122,9 @@ func (b *TxModelBuilder) Message(msg string) *TxModelBuilder {
 	return b
 }
 
-func (b *TxModelBuilder) build() (model.Transaction, error) {
+func (b *TxModelBuilder) Build() (model.Transaction, error) {
 	if b.err != nil {
-		return nil, errors.Wrapf(ErrTxModelBuild, b.err.Error())
+		return nil, b.err
 	}
 	return b.Transaction, nil
 }

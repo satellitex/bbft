@@ -1,10 +1,11 @@
-package convertor
+package convertor_test
 
 import (
 	"testing"
 
 	"fmt"
-	"github.com/pkg/errors"
+	. "github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func TestSignAndVerify(t *testing.T) {
 func TestFailedSign(t *testing.T) {
 	hash := CalcHash([]byte("a"))
 	_, err := Sign(nil, hash)
-	assert.EqualError(t, errors.Cause(err), ErrCryptoSign.Error())
+	assert.Error(t, err)
 }
 
 func TestFailedVerifyNilPubkey(t *testing.T) {
@@ -57,4 +58,18 @@ func TestFailedVerifyNilHash(t *testing.T) {
 	require.NoError(t, err)
 	assert.Error(t, Verify(pubkey, nil, signature),
 		"pubkey: %x \nhash: %x\nsignature %x", pubkey, nil, signature)
+}
+
+func TestSuccessdVerifyNilMarshal(t *testing.T) {
+	tx := &Transaction{&bbft.Transaction{}}
+	_, err := CalcHashFromProto(tx)
+
+	assert.NoError(t, err)
+}
+
+func TestFailedVerifyNilMarshal(t *testing.T) {
+	tx := &Transaction{}
+	_, err := CalcHashFromProto(tx)
+
+	assert.Error(t, err)
 }

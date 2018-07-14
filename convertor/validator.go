@@ -37,6 +37,9 @@ func NewStatelessValidator() model.StatelessValidator {
 
 func (v *StatelessValidator) Validate(block model.Block) error {
 	var result error
+	if block == nil {
+		return errors.Wrapf(model.ErrInvalidBlock, "Block is nil")
+	}
 	for _, tx := range block.GetTransactions() {
 		if err := tx.Verify(); err != nil {
 			result = multierr.Append(result, errors.Wrapf(model.ErrTransactionVerify, err.Error()))
@@ -45,8 +48,5 @@ func (v *StatelessValidator) Validate(block model.Block) error {
 	if err := block.Verify(); err != nil {
 		result = multierr.Append(result, errors.Wrapf(model.ErrBlockVerify, err.Error()))
 	}
-	if result != nil {
-		return errors.Wrapf(ErrStatelessValidate, result.Error())
-	}
-	return nil
+	return result
 }

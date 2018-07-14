@@ -15,6 +15,13 @@ type PeerServiceOnMemory struct {
 	fromAddress map[string]model.Peer
 }
 
+func NewPeerServiceOnMemory() PeerService {
+	return &PeerServiceOnMemory{
+		make(map[string]model.Peer),
+		make(map[string]model.Peer),
+	}
+}
+
 func (p *PeerServiceOnMemory) Size() int {
 	return len(p.peers)
 }
@@ -27,17 +34,17 @@ func (p *PeerServiceOnMemory) AddPeer(peer model.Peer) {
 func (p *PeerServiceOnMemory) GetPeer(pubkey []byte) (model.Peer, bool) {
 	peer, ok := p.peers[string(pubkey)]
 	if !ok {
-		return nil, ok
+		return nil, false
 	}
-	return peer, false
+	return peer, true
 }
 
 func (p *PeerServiceOnMemory) GetPeerFromAddress(address string) (model.Peer, bool) {
 	peer, ok := p.fromAddress[address]
 	if !ok {
-		return nil, ok
+		return nil, false
 	}
-	return peer, false
+	return peer, true
 }
 
 func (p *PeerServiceOnMemory) GetPeers() []model.Peer {

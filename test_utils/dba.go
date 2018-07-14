@@ -5,6 +5,7 @@ import (
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"github.com/stretchr/testify/require"
+	"math/rand"
 	"testing"
 )
 
@@ -26,13 +27,10 @@ func RandomCommitableBlock(t *testing.T, bc dba.BlockChain) model.Block {
 	return ValidSignToBlock(block)
 }
 
-func RandomCommitBlock(t *testing.T, bc dba.BlockChain, height int) dba.BlockChain {
-	for i := 0; i < height; i++ {
-		block := RandomCommitableBlock(t, bc)
-		err := bc.Commit(block)
-		require.NoError(t, err)
-	}
-	return bc
+func RandomProposal(t *testing.T) model.Proposal {
+	proposal, err := convertor.NewModelFactory().NewProposal(RandomValidBlock(t), rand.Int63())
+	require.NoError(t, err)
+	return proposal
 }
 
 func ValidSignToBlock(b model.Block) model.Block {

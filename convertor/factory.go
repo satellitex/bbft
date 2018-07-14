@@ -68,6 +68,13 @@ func (_ *ModelFactory) NewSignature(pubkey []byte, signature []byte) model.Signa
 	}
 }
 
+func (_ *ModelFactory) NewPeer(address string, pubkey []byte) model.Peer {
+	return &Peer{
+		address,
+		pubkey,
+	}
+}
+
 type TxModelBuilder struct {
 	*Transaction
 	err error

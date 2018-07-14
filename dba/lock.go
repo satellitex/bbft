@@ -3,6 +3,7 @@ package dba
 import (
 	"bytes"
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/model"
 	"sync"
 )
@@ -17,39 +18,70 @@ type LockOnMemory struct {
 	peerService        PeerService
 	lockedProposal     model.Proposal
 	registerdProposals map[string]model.Proposal
-	acceptedPrposal    map[string]int
+	acceptedVotes      map[string][]model.VoteMessage
+	limit              int
 	mutex              *sync.Mutex
 }
 
 var (
-	ErrSetLockedProposal = errors.Errorf("Failed SetLocked Proposal")
+	ErrSetLockedProposal   = errors.Errorf("Failed SetLocked Proposal")
+	ErrValidInPeerService  = errors.Errorf("Failed Valid In PeerService")
+	ErrValidLockedProposal = errors.Errorf("Failed Valid Locked Proposal")
 )
 
-func NewLockOnMemory(peerService PeerService) Lock {
+func NewLockOnMemory(peerService PeerService, cnf config.BBFTConfig) Lock {
 	return &LockOnMemory{
 		peerService,
 		nil, make(map[string]model.Proposal),
-		make(map[string]int), new(sync.Mutex),
+		make(map[string][]model.VoteMessage), cnf.LockLimits,
+		new(sync.Mutex),
 	}
 }
 
-func (lock *LockOnMemory) getAllowFailed() int {
-	return (lock.peerService.Size() - 1) / 3
+func getAllowFailed(ps PeerService) int {
+	return (ps.Size() - 1) / 3
 }
 
-func (lock *LockOnMemory) getRequiredAccepet() int {
-	return lock.getAllowFailed()*2 + 1
+func getRequiredAccepet(ps PeerService) int {
+	return getAllowFailed(ps)*2 + 1
 }
 
-func (lock *LockOnMemory) setLockedProposal(proposal model.Proposal) (bool, error) {
+func validInPeerService(vote model.VoteMessage, ps PeerService) bool {
+	if _, ok := ps.GetPeer(vote.GetSignature().GetPubkey()); ok {
+		return true
+	}
+	return false
+}
+
+func validRequiredAccept(votes []model.VoteMessage, ps PeerService) bool {
+	cnt := 0
+	if len(votes) >= getRequiredAccepet(ps) {
+		for _, vote := range votes {
+			if vote == nil {
+				continue
+			}
+			if err := vote.Verify(); err != nil {
+				continue
+			}
+			if ok := validInPeerService(vote, ps); ok {
+				cnt++
+			}
+		}
+	}
+	if cnt >= getRequiredAccepet(ps) {
+		return true
+	}
+	return false
+}
+
+func validLockedProposal(proposal model.Proposal, lockedProposal model.Proposal) (bool, error) {
 	if proposal == nil {
-		return false, errors.Errorf("set proposal is nil")
+		return false, errors.Wrapf(model.ErrInvalidProposal, "set proposal is nil")
 	}
-	if lock.lockedProposal == nil {
-		lock.lockedProposal = proposal
+	if lockedProposal == nil {
 		return true, nil
 	} else {
-		lockedHash, err := lock.lockedProposal.GetBlock().GetHash()
+		lockedHash, err := lockedProposal.GetBlock().GetHash()
 		if err != nil {
 			return false, errors.Wrapf(model.ErrBlockGetHash, "locked Hash: "+err.Error())
 		}
@@ -58,8 +90,7 @@ func (lock *LockOnMemory) setLockedProposal(proposal model.Proposal) (bool, erro
 			return false, errors.Wrapf(model.ErrBlockGetHash, "new Hash: "+err.Error())
 		}
 		if !bytes.Equal(lockedHash, newHash) &&
-			proposal.GetRound() > lock.lockedProposal.GetRound() {
-			lock.lockedProposal = proposal
+			proposal.GetRound() > lockedProposal.GetRound() {
 			return true, nil
 		}
 	}
@@ -88,15 +119,24 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
 	if vote == nil {
 		return false, errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
 	}
+
+	if ok := validInPeerService(vote, lock.peerService); ok {
+		return false, errors.Wrapf(ErrValidInPeerService, "PeerService doesn't have pubkey: %x", vote.GetSignature().GetPubkey())
+	}
+
 	hash := string(vote.GetBlockHash())
-	lock.acceptedPrposal[hash]++
-	if lock.acceptedPrposal[hash] >= lock.getRequiredAccepet() {
-		if ok, err := lock.setLockedProposal(lock.registerdProposals[hash]); !ok {
-			if err != nil {
-				return false, errors.Wrapf(ErrSetLockedProposal, err.Error())
-			}
-		} else {
+	acceptedVotes := lock.acceptedVotes[hash]
+	acceptedVotes = append(acceptedVotes, vote)
+
+	if ok := validRequiredAccept(acceptedVotes, lock.peerService); ok {
+		proposal := lock.registerdProposals[hash]
+		if ok, err := validLockedProposal(proposal, lock.lockedProposal); ok {
+			lock.lockedProposal = proposal
 			return true, nil
+		} else {
+			if err != nil {
+				return false, errors.Wrapf(ErrValidLockedProposal, err.Error())
+			}
 		}
 	}
 	return false, nil

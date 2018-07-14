@@ -40,6 +40,25 @@ func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	return vote
 }
 
+func RandomVoteMesssageFromPeer(t *testing.T, peer model.Peer) model.VoteMessage {
+	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
+	vote.Sign(peer.GetPubkey(), peer.(*PeerWithPriv).PrivKey)
+	return vote
+}
+
+type PeerWithPriv struct {
+	*convertor.Peer
+	PrivKey []byte
+}
+
+func RandomPeerWithPriv() model.Peer {
+	validPub, validPri := convertor.NewKeyPair()
+	return &PeerWithPriv{
+		&convertor.Peer{RandomStr(), validPub},
+		validPri,
+	}
+}
+
 type Signer interface {
 	Sign(pub []byte, pri []byte) error
 }

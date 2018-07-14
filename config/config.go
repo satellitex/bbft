@@ -7,6 +7,7 @@ type BBFTConfig struct {
 	Port        string `default:"50053"`
 	SecretKey   string `default:"secret_key"`
 	QueueLimits int
+	LockLimits int
 }
 
 var config BBFTConfig
@@ -18,5 +19,6 @@ func GetConfig() *BBFTConfig {
 func GetTestConfig() *BBFTConfig {
 	testConfig := config
 	testConfig.QueueLimits = 100
+	testConfig.LockLimits = 100
 	return &testConfig
 }

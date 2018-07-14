@@ -31,10 +31,15 @@ func testLock_RegisterProposal(t *testing.T, lock Lock) {
 
 func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService) {
 	// 4 peer
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
+	peers := []model.Peer{
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+	}
+	for _, peer := range peers {
+		p.AddPeer(peer)
+	}
 
 	validGetLockedProposal := func(t *testing.T, expectedProposal model.Proposal) {
 		proposal, ok := lock.GetLockedProposal()
@@ -47,7 +52,7 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 	}
 
 	t.Run("success valid votes", func(t *testing.T) {
-		vote := RandomVoteMessage(t)
+		vote := RandomVoteMesssageFromPeer(t, peers[0])
 		in, err := lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
 		assert.False(t, in)
@@ -61,6 +66,7 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 
 		validGetLockedProposal(t, nil)
 	})
+
 
 	// register valid proposal
 	validProposals := []model.Proposal{

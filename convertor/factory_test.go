@@ -7,6 +7,7 @@ import (
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 	"math/rand"
 	"testing"
 )
@@ -294,10 +295,7 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"all ng case",
-			errors.Errorf("Can not cast Signature model: <nil>." +
-				": Failed Invalid Signature; ed25519: bad private key length: 0, expected 64" +
-				": Failed Sign by ed25519" +
-				": Failed Sign by ed25519"),
+			multierr.Combine(model.ErrInvalidSignature, ErrCryptoSign, ErrCryptoSign),
 			RandomStr(),
 			nil,
 			nil,
@@ -310,7 +308,7 @@ func TestTxModelBuilder(t *testing.T) {
 				Sign(c.expectedPubkey, c.expectedPrivKey).
 				Build()
 			if c.expectedError != nil {
-				assert.Error(t, errors.Cause(err))
+				MultiErrorCheck(t, errors.Cause(err), c.expectedError)
 				return
 			}
 			assert.NoError(t, err)

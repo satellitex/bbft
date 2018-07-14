@@ -19,6 +19,7 @@ func MultiErrorCheck(t *testing.T, err error, expectedErr error) {
 func MultiErrorInCheck(t *testing.T, err error, expectedErr error) {
 	multiErr := multierr.Errors(err)
 	multiCausedErr := make([]error, 0, len(multiErr))
+	
 	for _, e := range multiErr {
 		multiCausedErr = append(multiCausedErr, errors.Cause(e))
 	}

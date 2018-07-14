@@ -6,6 +6,7 @@ var (
 	ErrVoteMessageGetBlockHash = errors.Errorf("Failed VoteMessage GetBlockHash")
 	ErrVoteMessageVerify       = errors.Errorf("Failed VoteMessage Verify")
 	ErrVoteMessageSign         = errors.Errorf("Failed VoteMessage Sign")
+	ErrInvalidVoteMessage      = errors.Errorf("Failed Invalid VoteMessage")
 )
 
 type VoteMessage interface {

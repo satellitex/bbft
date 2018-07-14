@@ -24,7 +24,8 @@ func RandomCommitableBlock(t *testing.T, bc dba.BlockChain) model.Block {
 	}
 	block := RandomValidBlock(t)
 	block.(*convertor.Block).Header.Height = 0
-	return ValidSignToBlock(block)
+	ValidSign(t, block)
+	return block
 }
 
 func RandomProposal(t *testing.T) model.Proposal {
@@ -33,8 +34,23 @@ func RandomProposal(t *testing.T) model.Proposal {
 	return proposal
 }
 
+func RandomVoteMessage(t *testing.T) model.VoteMessage {
+	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
+	ValidSign(t, vote)
+	return vote
+}
+
 func ValidSignToBlock(b model.Block) model.Block {
 	pub, pri := convertor.NewKeyPair()
 	b.Sign(pub, pri)
 	return b
+}
+
+type Signer interface {
+	Sign(pub []byte, pri []byte) error
+}
+
+func ValidSign(t *testing.T, s Signer) {
+	pub, pri := convertor.NewKeyPair()
+	require.NoError(t, s.Sign(pub, pri))
 }

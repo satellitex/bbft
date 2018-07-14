@@ -18,22 +18,33 @@ type LockOnMemory struct {
 	peerService        PeerService
 	lockedProposal     model.Proposal
 	registerdProposals map[string]model.Proposal
-	acceptedVotes      map[string][]model.VoteMessage
-	limit              int
-	mutex              *sync.Mutex
+	registeredQueue    []string
+
+	acceptedCounter map[string]int
+	findedVote      map[string]model.VoteMessage
+	votedQueue      []string
+
+	lockedLimit int
+	votedLimit  int
+	mutex       *sync.Mutex
 }
 
 var (
-	ErrSetLockedProposal   = errors.Errorf("Failed SetLocked Proposal")
-	ErrValidInPeerService  = errors.Errorf("Failed Valid In PeerService")
-	ErrValidLockedProposal = errors.Errorf("Failed Valid Locked Proposal")
+	ErrSetLockedProposal     = errors.Errorf("Failed SetLocked Proposal")
+	ErrValidInPeerService    = errors.Errorf("Failed Valid In PeerService")
+	ErrValidLockedProposal   = errors.Errorf("Failed Valid Locked Proposal")
+	ErrAlreadyAddVoteMessage = errors.Errorf("Failed Alrady add same VoteMessage")
 )
 
 func NewLockOnMemory(peerService PeerService, cnf config.BBFTConfig) Lock {
 	return &LockOnMemory{
 		peerService,
-		nil, make(map[string]model.Proposal),
-		make(map[string][]model.VoteMessage), cnf.LockLimits,
+		nil,
+		make(map[string]model.Proposal), make([]string, cnf.LockedRegisteredLimits),
+		make(map[string]int),
+		make(map[string]model.VoteMessage), make([]string, cnf.LockedVotedLimits),
+		cnf.LockedRegisteredLimits,
+		cnf.LockedVotedLimits,
 		new(sync.Mutex),
 	}
 }
@@ -48,27 +59,6 @@ func getRequiredAccepet(ps PeerService) int {
 
 func validInPeerService(vote model.VoteMessage, ps PeerService) bool {
 	if _, ok := ps.GetPeer(vote.GetSignature().GetPubkey()); ok {
-		return true
-	}
-	return false
-}
-
-func validRequiredAccept(votes []model.VoteMessage, ps PeerService) bool {
-	cnt := 0
-	if len(votes) >= getRequiredAccepet(ps) {
-		for _, vote := range votes {
-			if vote == nil {
-				continue
-			}
-			if err := vote.Verify(); err != nil {
-				continue
-			}
-			if ok := validInPeerService(vote, ps); ok {
-				cnt++
-			}
-		}
-	}
-	if cnt >= getRequiredAccepet(ps) {
 		return true
 	}
 	return false
@@ -108,7 +98,13 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 	if err != nil {
 		return errors.Wrapf(model.ErrBlockGetHash, err.Error())
 	}
+	// register proposal ===
 	lock.registerdProposals[string(hash)] = proposal
+	lock.registeredQueue = append(lock.registeredQueue, string(hash))
+	if len(lock.registeredQueue) >= lock.lockedLimit {
+		lock.registeredQueue = lock.registeredQueue[1:]
+	}
+	// ===
 	return nil
 }
 
@@ -125,10 +121,22 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
 	}
 
 	hash := string(vote.GetBlockHash())
-	acceptedVotes := lock.acceptedVotes[hash]
-	acceptedVotes = append(acceptedVotes, vote)
+	pub := string(vote.GetSignature().GetPubkey())
+	if _, ok := lock.findedVote[hash+pub]; ok {
+		return false, errors.Wrapf(ErrAlreadyAddVoteMessage, "already add vote: %#v", vote)
+	}
 
-	if ok := validRequiredAccept(acceptedVotes, lock.peerService); ok {
+	// add vote ===
+	lock.findedVote[hash+pub] = vote
+	lock.votedQueue = append(lock.votedQueue, hash+pub)
+	if len(lock.votedQueue) == lock.votedLimit { // shits Limits
+		lock.votedQueue = lock.votedQueue[1:]
+	}
+	acceptedCounter := lock.acceptedCounter[hash]
+	acceptedCounter++
+	// ===
+
+	if getRequiredAccepet(lock.peerService) >= acceptedCounter {
 		proposal := lock.registerdProposals[hash]
 		if ok, err := validLockedProposal(proposal, lock.lockedProposal); ok {
 			lock.lockedProposal = proposal

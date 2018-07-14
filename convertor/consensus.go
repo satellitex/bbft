@@ -37,27 +37,3 @@ func (v *VoteMessage) Verify() error {
 	}
 	return nil
 }
-
-type GrpcConsensusSender struct {
-	client bbft.ConsensusGateClient
-}
-
-func NewConsensusSender() model.ConsensusSender {
-	return &GrpcConsensusSender{nil}
-}
-
-func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
-	return nil
-}
-
-func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
-	return nil
-}
-
-func (s *GrpcConsensusSender) Vote(vote model.VoteMessage) error {
-	return nil
-}
-
-func (s *GrpcConsensusSender) PreCommit(vote model.VoteMessage) error {
-	return nil
-}

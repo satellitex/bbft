@@ -10,28 +10,21 @@ type ClientGateReceiver interface {
 }
 
 type ClientGateReceiverUsecase struct {
-	slv model.StatelessValidator
-	factory   model.ModelFactory
-	sender    model.ConsensusSender
+	slv    model.StatelessValidator
+	sender model.ConsensusSender
 }
 
-func NewClientGateReceiverUsecase(validator model.StatelessValidator, factory model.ModelFactory, sender model.ConsensusSender) ClientGateReceiver {
+func NewClientGateReceiverUsecase(validator model.StatelessValidator, sender model.ConsensusSender) ClientGateReceiver {
 	return &ClientGateReceiverUsecase{
-		slv: validator,
-		factory:   factory,
-		sender:    sender,
+		slv:    validator,
+		sender: sender,
 	}
 }
 
 func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {
-	if tx == nil {
-		return errors.Wrapf(model.ErrInvalidTransaction, "tx is nil")
+	if err := c.slv.TxValidate(tx); err != nil {
+		return errors.Wrapf(model.ErrStatelessTxValidate, err.Error())
 	}
-
-	if err := tx.Verify(); err != nil {
-		return errors.Wrapf(model.ErrTransactionVerify, err.Error())
-	}
-
 	err := c.sender.Propagate(tx)
 	if err != nil {
 		return errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())

@@ -89,7 +89,7 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
 		return false, errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
 	}
 	hash := string(vote.GetBlockHash())
-	lock.acceptedPrposal[hash] += 1
+	lock.acceptedPrposal[hash]++
 	if lock.acceptedPrposal[hash] >= lock.getRequiredAccepet() {
 		if ok, err := lock.setLockedProposal(lock.registerdProposals[hash]); !ok {
 			if err != nil {

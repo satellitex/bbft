@@ -9,12 +9,15 @@ import (
 
 type BlockChain interface {
 	Top() (model.Block, bool)
-	Commit(block model.Block) error
+	FindTx(hash []byte) (model.Transaction, bool)
+	// Commit is allowed only Commitable Block, ohterwise panic
+	Commit(block model.Block)
 	VerifyCommit(block model.Block) error
 }
 
 type BlockChainOnMemory struct {
 	db        map[int64]model.Block
+	tx        map[string]model.Transaction
 	hashIndex map[string]int64
 	counter   int64
 	m         *sync.Mutex
@@ -23,6 +26,7 @@ type BlockChainOnMemory struct {
 func NewBlockChainOnMemory() BlockChain {
 	return &BlockChainOnMemory{
 		make(map[int64]model.Block),
+		make(map[string]model.Transaction),
 		make(map[string]int64),
 		0,
 		new(sync.Mutex),
@@ -51,13 +55,11 @@ var (
 	ErrBlockChainVerifyCommitInvalidCreatedTime  = errors.New("Failed Invalid CreatedTime of Block")
 	ErrBlockChainVerifyCommitAlreadyExist        = errors.New("Failed Alraedy Exist Block")
 	ErrBlockChainVerifyCommit                    = errors.New("Failed Blockchain Verify Commit")
-	ErrBlockChainCommit                          = errors.New("Failed Blockchain Commit")
 )
 
 func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
-	// Verify block
-	if err := block.Verify(); err != nil {
-		return errors.Wrapf(model.ErrBlockVerify, err.Error())
+	if block == nil {
+		return errors.Wrapf(model.ErrInvalidBlock, "block is nil")
 	}
 
 	// Height Check
@@ -81,7 +83,11 @@ func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 				createdTime, top.GetHeader().GetCreatedTime())
 		}
 		// Already exist check
-		if id, ok := b.getIndex(model.MustGetHash(block)); ok {
+		hash, err := block.GetHash()
+		if err != nil {
+			return errors.Wrapf(model.ErrBlockGetHash, err.Error())
+		}
+		if id, ok := b.getIndex(hash); ok {
 			return errors.Wrapf(ErrBlockChainVerifyCommitAlreadyExist,
 				"Already exist block %x is %d-th Block", model.MustGetHash(block), id)
 		}
@@ -89,15 +95,29 @@ func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 	return nil
 }
 
-func (b *BlockChainOnMemory) Commit(block model.Block) error {
+func (b *BlockChainOnMemory) Commit(block model.Block) {
 	defer b.m.Unlock()
 	b.m.Lock()
-	if err := b.VerifyCommit(block); err != nil {
-		return errors.Wrapf(ErrBlockChainVerifyCommit, err.Error())
-	}
 
+	if block == nil {
+		panic("commit block is nil")
+	}
 	b.hashIndex[string(model.MustGetHash(block))] = b.counter
 	b.db[b.counter] = block
 	b.counter += 1
-	return nil
+
+	for _, tx := range block.GetTransactions() {
+		if tx == nil {
+			panic("commit transaction is nil")
+		}
+		b.tx[string(model.MustGetHash(tx))] = tx
+	}
+}
+
+func (b *BlockChainOnMemory) FindTx(hash []byte) (model.Transaction, bool) {
+	tx, ok := b.tx[string(hash)]
+	if !ok {
+		return nil, false
+	}
+	return tx, true
 }

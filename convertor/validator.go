@@ -10,6 +10,8 @@ import (
 var (
 	ErrStatefulValidate  = errors.Errorf("Failed StatefulValidate")
 	ErrStatelessValidate = errors.Errorf("Failed StatelessValidate")
+
+	ErrStatefulValidateAlreadyExistTx = errors.Errorf("Failed Already Exist Transaction")
 )
 
 type StatefulValidator struct {
@@ -17,15 +19,29 @@ type StatefulValidator struct {
 }
 
 func (v *StatefulValidator) Validate(block model.Block) error {
-	bc, ok := v.bc.(*dba.BlockChainOnMemory)
-	if !ok {
-		return errors.Wrapf(ErrStatefulValidate,
-			"Can not cast dba.BlockChainOnMemory %#v", v.bc)
+	// bloc is already stateless validate
+	var result error
+	if block == nil {
+		return errors.Wrapf(model.ErrInvalidBlock, "Block is nil")
 	}
-	if err := bc.VerifyCommit(block); err != nil {
-		return errors.Wrapf(ErrStatefulValidate, err.Error())
+	if err := v.bc.VerifyCommit(block); err != nil {
+		result = multierr.Append(result, errors.Wrapf(dba.ErrBlockChainVerifyCommit, err.Error()))
 	}
-	return nil
+	for _, tx := range block.GetTransactions() {
+		hash, err := tx.GetHash()
+		if err != nil {
+			result = multierr.Append(result, errors.Wrapf(model.ErrTransactionGetHash, err.Error()))
+			continue
+		}
+		if _, ok := v.bc.FindTx(hash); ok {
+			result = multierr.Append(result, errors.Wrapf(ErrStatefulValidateAlreadyExistTx, "Alrady exist transaction hash : %x", hash))
+		}
+	}
+	return result
+}
+
+func NewStatefulValidator(bc dba.BlockChain) model.StatefulValidator {
+	return &StatefulValidator{bc}
 }
 
 type StatelessValidator struct {

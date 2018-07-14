@@ -36,11 +36,16 @@ func (e *HackHashBlock) GetHash() ([]byte, error) {
 
 func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 
-	t.Run("failed empty bc and add unverified Block", func(t *testing.T) {
-		block := ValidErrSignedBlock(t)
+	t.Run("success empty bc and add comittable block", func(t *testing.T) {
+		block := RandomCommitableBlock(t, bc)
 
 		err := bc.VerifyCommit(block)
-		assert.EqualError(t, errors.Cause(err), model.ErrBlockVerify.Error())
+		assert.NoError(t, err)
+	})
+
+	t.Run("fialed add nil block", func(t *testing.T) {
+		err := bc.VerifyCommit(nil)
+		assert.EqualError(t, errors.Cause(err), model.ErrInvalidBlock.Error())
 	})
 
 	t.Run("failed empty bc and add verified Block, but height = 0", func(t *testing.T) {
@@ -52,21 +57,14 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitInvalidHeight.Error())
 	})
 
-	t.Run("success empty bc and add comittable block", func(t *testing.T) {
+	// Commit 1 Block
+	bc.Commit(RandomCommitableBlock(t, bc))
+
+	t.Run("success exist bc and add comittable block", func(t *testing.T) {
 		block := RandomCommitableBlock(t, bc)
 
 		err := bc.VerifyCommit(block)
 		assert.NoError(t, err)
-	})
-
-	// Commit 1 Block
-	require.NoError(t, bc.Commit(RandomCommitableBlock(t, bc)))
-
-	t.Run("failed exist bc and add unverified Block", func(t *testing.T) {
-		block := ValidErrSignedBlock(t)
-
-		err := bc.VerifyCommit(block)
-		assert.EqualError(t, errors.Cause(err), model.ErrBlockVerify.Error())
 	})
 
 	t.Run("failed exist bc and add verified Block, but height = 0", func(t *testing.T) {
@@ -106,25 +104,28 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitAlreadyExist.Error())
 	})
 
-	t.Run("success exist bc and add comittable block", func(t *testing.T) {
+	t.Run("failed exist bc and add can not GetHash Block", func(t *testing.T) {
 		block := RandomCommitableBlock(t, bc)
+		block.(*convertor.Block).Transactions[0] = nil
 
 		err := bc.VerifyCommit(block)
-		assert.NoError(t, err)
+		assert.EqualError(t, errors.Cause(err), model.ErrBlockGetHash.Error())
 	})
 
 }
 
-func testBlockChain_Commit(t *testing.T, bc BlockChain) {
-	t.Run("failed commit invalid block", func(t *testing.T) {
-		err := bc.Commit(RandomBlock(t))
-		require.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommit.Error())
-	})
+func testBlockChain_CommitAndFindTx(t *testing.T, bc BlockChain) {
+	block := RandomCommitableBlock(t, bc)
+	bc.Commit(block)
 
-	t.Run("failed commit valid block", func(t *testing.T) {
-		err := bc.Commit(RandomCommitableBlock(t, bc))
-		require.NoError(t, err)
-	})
+	for _, expectedTx := range block.GetTransactions() {
+		tx, ok := bc.FindTx(GetHash(t, expectedTx))
+		assert.True(t, ok)
+		assert.Equal(t, expectedTx, tx)
+	}
+	tx, ok := bc.FindTx(RandomByte())
+	assert.False(t, ok)
+	assert.Nil(t, tx)
 }
 
 func TestBlockChainOnMemory_Top(t *testing.T) {
@@ -139,5 +140,5 @@ func TestBlockChainOnMemory_VerifyCommit(t *testing.T) {
 
 func TestBlockChainOnMemory_Commit(t *testing.T) {
 	bc := NewBlockChainOnMemory()
-	testBlockChain_Commit(t, bc)
+	testBlockChain_CommitAndFindTx(t, bc)
 }

@@ -40,12 +40,6 @@ func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	return vote
 }
 
-func ValidSignToBlock(b model.Block) model.Block {
-	pub, pri := convertor.NewKeyPair()
-	b.Sign(pub, pri)
-	return b
-}
-
 type Signer interface {
 	Sign(pub []byte, pri []byte) error
 }

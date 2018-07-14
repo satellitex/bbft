@@ -10,6 +10,8 @@ var (
 
 	ErrInvalidBlockHeader = errors.Errorf("Failed Invalid BlockHeader")
 	ErrBlockHeaderGetHash = errors.Errorf("Failed BlockHeader GetHash")
+
+	ErrInvalidProposal = errors.Errorf("Failed Invalid Proposal")
 )
 
 type Block interface {

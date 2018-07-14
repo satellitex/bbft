@@ -125,3 +125,7 @@ func ValidErrSignedBlock(t *testing.T) model.Block {
 	require.Error(t, block.Verify())
 	return block
 }
+
+func RandomPeer() model.Peer {
+	return convertor.NewModelFactory().NewPeer(RandomStr(), RandomByte())
+}

@@ -12,6 +12,7 @@ type ModelFactory interface {
 	NewProposal(block Block, round int64) (Proposal, error)
 	NewVoteMessage(hash []byte) VoteMessage
 	NewSignature(pubkey []byte, signature []byte) Signature
+	NewPeer(address string, pubkey []byte) Peer
 }
 
 type Hasher interface {

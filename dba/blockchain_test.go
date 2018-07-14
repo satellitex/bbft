@@ -46,7 +46,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 	t.Run("failed empty bc and add verified Block, but height = 0", func(t *testing.T) {
 		block := RandomCommitableBlock(t, bc)
 		block.(*convertor.Block).Header.Height = 100
-		ValidSignToBlock(block)
+		ValidSign(t, block)
 
 		err := bc.VerifyCommit(block)
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitInvalidHeight.Error())
@@ -72,7 +72,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 	t.Run("failed exist bc and add verified Block, but height = 0", func(t *testing.T) {
 		block := ValidSignedBlock(t)
 		block.(*convertor.Block).Header.Height = 100
-		ValidSignToBlock(block)
+		ValidSign(t, block)
 
 		err := bc.VerifyCommit(block)
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitInvalidHeight.Error())
@@ -81,7 +81,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 	t.Run("failed exist bc and add verified Block, but preblock is not top.block.hash ", func(t *testing.T) {
 		block := RandomCommitableBlock(t, bc)
 		block.(*convertor.Block).Header.PreBlockHash = RandomByte()
-		ValidSignToBlock(block)
+		ValidSign(t, block)
 
 		err := bc.VerifyCommit(block)
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitInvalidPreBlockHash.Error())
@@ -90,7 +90,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 	t.Run("failed exist bc and add verified Block, but createdTime so faster ", func(t *testing.T) {
 		block := RandomCommitableBlock(t, bc)
 		block.(*convertor.Block).Header.CreatedTime = 0
-		ValidSignToBlock(block)
+		ValidSign(t, block)
 
 		err := bc.VerifyCommit(block)
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitInvalidCreatedTime.Error())
@@ -100,7 +100,7 @@ func testBlockChain_VerifyCommit(t *testing.T, bc BlockChain) {
 		top, ok := bc.Top()
 		require.True(t, ok)
 		block := &HackHashBlock{RandomCommitableBlock(t, bc).(*convertor.Block), GetHash(t, top)}
-		ValidSignToBlock(block)
+		ValidSign(t, block)
 
 		err := bc.VerifyCommit(block)
 		assert.EqualError(t, errors.Cause(err), ErrBlockChainVerifyCommitAlreadyExist.Error())

@@ -7,6 +7,7 @@ import (
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 	"math/rand"
 	"testing"
 )
@@ -135,7 +136,6 @@ func TestProposalFactory(t *testing.T) {
 			assert.Equal(t, c.expectedRound, proposal.GetRound())
 		})
 	}
-
 }
 
 func TestVoteMessageFactory(t *testing.T) {
@@ -175,7 +175,6 @@ func TestVoteMessageFactory(t *testing.T) {
 			assert.Equal(t, c.expectedHash, vote.GetBlockHash())
 		})
 	}
-
 }
 
 func TestSignatureFactory(t *testing.T) {
@@ -296,10 +295,7 @@ func TestTxModelBuilder(t *testing.T) {
 		},
 		{
 			"all ng case",
-			errors.Errorf("Can not cast Signature model: <nil>." +
-				": Failed Invalid Signature; ed25519: bad private key length: 0, expected 64" +
-				": Failed Sign by ed25519" +
-				": Failed Sign by ed25519"),
+			multierr.Combine(model.ErrInvalidSignature, ErrCryptoSign, ErrCryptoSign),
 			RandomStr(),
 			nil,
 			nil,
@@ -312,7 +308,7 @@ func TestTxModelBuilder(t *testing.T) {
 				Sign(c.expectedPubkey, c.expectedPrivKey).
 				Build()
 			if c.expectedError != nil {
-				assert.Error(t, errors.Cause(err))
+				MultiErrorCheck(t, errors.Cause(err), c.expectedError)
 				return
 			}
 			assert.NoError(t, err)
@@ -324,6 +320,41 @@ func TestTxModelBuilder(t *testing.T) {
 			signature, err := Sign(c.expectedPrivKey, GetHash(t, tx))
 			require.NoError(t, err)
 			assert.Equal(t, signature, tx.GetSignatures()[1].GetSignature())
+		})
+	}
+}
+
+func TestNewPeer(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		address string
+		pubkey  []byte
+	}{
+		{
+			"case 1",
+			"111.111.111.111",
+			RandomByte(),
+		},
+		{
+			"case 2",
+			RandomStr(),
+			RandomByte(),
+		},
+		{
+			"case 3",
+			"localhost",
+			nil,
+		},
+		{
+			"case 4",
+			"",
+			nil,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			peer := NewModelFactory().NewPeer(c.address, c.pubkey)
+			assert.Equal(t, c.address, peer.GetAddress())
+			assert.Equal(t, c.pubkey, peer.GetPubkey())
 		})
 	}
 }

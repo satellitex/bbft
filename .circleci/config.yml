@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/satellitex/bbft
     docker:
-      - image: satellitex/bbft:feature_ci_test
+      - image: satellitex/bbft
     steps:
       - checkout
       - restore_cache:

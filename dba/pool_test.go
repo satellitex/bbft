@@ -72,7 +72,7 @@ func testReceiverPoolOnMemory(t *testing.T, pool ReceiverPool) {
 	})
 
 	t.Run("success paralell set", func(t *testing.T) {
-		for i := 0; i < GetTestConfig().ReceivePropagateTxPoolLimits * 2; i++ {
+		for i := 0; i < GetTestConfig().ReceivePropagateTxPoolLimits*2; i++ {
 			tx := RandomValidTx(t)
 			go func() {
 				assert.NoError(t, pool.SetPropagate(tx))

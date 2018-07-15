@@ -35,8 +35,8 @@ func NewProposalTxQueueOnMemory(conf *config.BBFTConfig) ProposalTxQueue {
 }
 
 func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
-	defer q.mutex.Unlock()
 	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
 	if tx == nil {
 		return errors.Wrapf(model.ErrInvalidTransaction, "push transaction is nil")
@@ -59,6 +59,9 @@ func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
 }
 
 func (q *ProposalTxQueueOnMemory) Pop() (model.Transaction, bool) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
 	if len(q.queue) == 0 {
 		return nil, false
 	}

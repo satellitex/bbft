@@ -58,6 +58,9 @@ var (
 )
 
 func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
+	b.m.Lock()
+	defer b.m.Unlock()
+
 	if block == nil {
 		return errors.Wrapf(model.ErrInvalidBlock, "block is nil")
 	}
@@ -96,8 +99,8 @@ func (b *BlockChainOnMemory) VerifyCommit(block model.Block) error {
 }
 
 func (b *BlockChainOnMemory) Commit(block model.Block) {
-	defer b.m.Unlock()
 	b.m.Lock()
+	defer b.m.Unlock()
 
 	if block == nil {
 		panic("commit block is nil")
@@ -115,6 +118,9 @@ func (b *BlockChainOnMemory) Commit(block model.Block) {
 }
 
 func (b *BlockChainOnMemory) FindTx(hash []byte) (model.Transaction, bool) {
+	b.m.Lock()
+	defer b.m.Unlock()
+
 	tx, ok := b.tx[string(hash)]
 	if !ok {
 		return nil, false

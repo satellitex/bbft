@@ -90,8 +90,8 @@ func (lock *LockOnMemory) checkAndLock(hash string) {
 }
 
 func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
-	defer lock.mutex.Unlock()
 	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
 
 	if proposal == nil {
 		return errors.Wrapf(model.ErrInvalidProposal, "Proposal is nil")
@@ -117,8 +117,8 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 }
 
 func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) error {
-	defer lock.mutex.Unlock()
 	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
 
 	if vote == nil {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
@@ -146,6 +146,8 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) error {
 }
 
 func (lock *LockOnMemory) GetLockedProposal(height int64) (model.Proposal, bool) {
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
 	if ret, ok := lock.lockedProposal[height]; ok {
 		return ret, true
 	}
@@ -153,6 +155,8 @@ func (lock *LockOnMemory) GetLockedProposal(height int64) (model.Proposal, bool)
 }
 
 func (lock *LockOnMemory) Clean(height int64) {
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
 	for k, _ := range lock.lockedProposal {
 		if k < height {
 			delete(lock.lockedProposal, k)

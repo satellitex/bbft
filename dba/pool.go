@@ -30,8 +30,8 @@ func newHasherPoolOnMemory(limit int) hasherPool {
 }
 
 func (t *hasherPoolOnMemory) set(hasher model.Hasher) error {
-	defer t.mutex.Unlock()
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
 
 	if hasher == nil {
 		return errors.New("set object is nil")
@@ -57,6 +57,8 @@ func (t *hasherPoolOnMemory) isExist(hasher model.Hasher) bool {
 	if err != nil {
 		return false
 	}
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	if _, ok := t.mp[string(hash)]; ok {
 		return true
 	}

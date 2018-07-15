@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, dba.Lock, dba.BlockChain, model.ConsensusSender, ConsensusReceiver) {
+func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, dba.Lock, dba.BlockChain, model.ConsensusSender, *ReceiveChannel, ConsensusReceiver) {
 	testConfig := GetTestConfig()
 	queue := dba.NewProposalTxQueueOnMemory(testConfig)
 	ps := dba.NewPeerServiceOnMemory()
@@ -22,11 +22,12 @@ func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, db
 	bc := dba.NewBlockChainOnMemory()
 	slv := convertor.NewStatelessValidator()
 	sender := convertor.NewMockConsensusSender()
-	return queue, ps, lock, bc, sender, NewConsensusReceiverUsecase(queue, ps, lock, pool, bc, slv, sender)
+	receivChan := NewReceiveChannel(testConfig)
+	return queue, ps, lock, bc, sender, receivChan, NewConsensusReceiverUsecase(queue, ps, lock, pool, bc, slv, sender, receivChan)
 }
 
 func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
-	queue, _, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	queue, _, _, _, sender, _, receiver := NewTestConsensusReceiverUsecase()
 	t.Run("success case", func(t *testing.T) {
 		tx := RandomValidTx(t)
 		err := receiver.Propagate(tx)
@@ -84,12 +85,13 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 }
 
 func TestConsensusReceieverUsecase_Propose(t *testing.T) {
-	_, _, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	_, _, _, _, sender, channel, receiver := NewTestConsensusReceiverUsecase()
 	t.Run("success case", func(t *testing.T) {
 		proposal := RandomProposalWithHeightRound(t, 0, 0)
 		err := receiver.Propose(proposal)
 		assert.NoError(t, err)
 		assert.Equal(t, proposal, sender.(*convertor.MockConsensusSender).Proposal)
+		assert.Equal(t, proposal, <-channel.Propose)
 	})
 
 	t.Run("failed case input nil", func(t *testing.T) {
@@ -109,6 +111,7 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 		proposal := RandomProposal(t)
 		err := receiver.Propose(proposal)
 		require.NoError(t, err)
+		require.Equal(t, proposal, <-channel.Propose)
 
 		err = receiver.Propose(proposal)
 		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
@@ -123,13 +126,16 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 				assert.NoError(t, err)
 				waiter.Done()
 			}()
+			go func() {
+				<-channel.Propose
+			}()
 		}
 		waiter.Wait()
 	})
 }
 
 func TestConsensusReceieverUsecase_Vote(t *testing.T) {
-	_, ps, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	_, ps, _, _, sender, channel, receiver := NewTestConsensusReceiverUsecase()
 	peers := []model.Peer{
 		RandomPeerWithPriv(),
 		RandomPeerWithPriv(),
@@ -145,6 +151,7 @@ func TestConsensusReceieverUsecase_Vote(t *testing.T) {
 		err := receiver.Vote(vote)
 		assert.NoError(t, err)
 		assert.Equal(t, vote, sender.(*convertor.MockConsensusSender).VoteMessage)
+		assert.Equal(t, vote, <-channel.Vote)
 	})
 
 	t.Run("failed case input nil", func(t *testing.T) {
@@ -169,6 +176,7 @@ func TestConsensusReceieverUsecase_Vote(t *testing.T) {
 		vote := RandomVoteMessageFromPeer(t, peers[0])
 		err := receiver.Vote(vote)
 		require.NoError(t, err)
+		require.Equal(t, vote, <-channel.Vote)
 
 		err = receiver.Vote(vote)
 		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
@@ -183,11 +191,75 @@ func TestConsensusReceieverUsecase_Vote(t *testing.T) {
 				assert.NoError(t, err)
 				waiter.Done()
 			}()
+			go func() {
+				<-channel.Vote
+			}()
 		}
 		waiter.Wait()
 	})
 }
 
 func TestConsensusReceieverUsecase_PreCommit(t *testing.T) {
+	_, ps, _, _, sender, channel, receiver := NewTestConsensusReceiverUsecase()
+	peers := []model.Peer{
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+		RandomPeerWithPriv(),
+	}
+	for _, p := range peers {
+		ps.AddPeer(p)
+	}
 
+	t.Run("success case", func(t *testing.T) {
+		preCommit := RandomVoteMessageFromPeer(t, peers[0])
+		err := receiver.PreCommit(preCommit)
+		assert.NoError(t, err)
+		assert.Equal(t, preCommit, sender.(*convertor.MockConsensusSender).PreCommitMessage)
+		assert.Equal(t, preCommit, <-channel.PreCommit)
+	})
+
+	t.Run("failed case input nil", func(t *testing.T) {
+		err := receiver.PreCommit(nil)
+		assert.EqualError(t, errors.Cause(err), model.ErrInvalidVoteMessage.Error())
+	})
+
+	t.Run("failed case input unverified preCommit", func(t *testing.T) {
+		preCommit := RandomVoteMessage(t)
+		preCommit.(*convertor.VoteMessage).Signature = nil
+		err := receiver.PreCommit(preCommit)
+		assert.EqualError(t, errors.Cause(err), model.ErrVoteMessageVerify.Error())
+	})
+
+	t.Run("failed case input not peers preCommit", func(t *testing.T) {
+		preCommit := RandomVoteMessage(t)
+		err := receiver.PreCommit(preCommit)
+		assert.EqualError(t, errors.Cause(err), ErrPreCommitNotInPeerService.Error())
+	})
+
+	t.Run("fialed case already exist preCommit", func(t *testing.T) {
+		preCommit := RandomVoteMessageFromPeer(t, peers[0])
+		err := receiver.PreCommit(preCommit)
+		require.NoError(t, err)
+		require.Equal(t, preCommit, <-channel.PreCommit)
+
+		err = receiver.PreCommit(preCommit)
+		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
+	})
+
+	t.Run("DoS safety test", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
+		for i := 0; i < GetTestConfig().ReceivePreCommitVoteMessagePoolLimits*2; i++ {
+			waiter.Add(1)
+			go func() {
+				err := receiver.PreCommit(RandomVoteMessageFromPeer(t, peers[1]))
+				assert.NoError(t, err)
+				waiter.Done()
+			}()
+			go func() {
+				<-channel.PreCommit
+			}()
+		}
+		waiter.Wait()
+	})
 }

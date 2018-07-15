@@ -2,15 +2,31 @@ package usecase
 
 import (
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"go.uber.org/multierr"
 )
 
 var (
-	ErrAlradyReceivedSameObject = errors.New("Failed Alrady Received Same Object")
-	ErrVoteNotInPeerService     = errors.New("Failed vote's pubkey doesn't exist in peerService")
+	ErrAlradyReceivedSameObject  = errors.New("Failed Alrady Received Same Object")
+	ErrVoteNotInPeerService      = errors.New("Failed vote's pubkey doesn't exist in peerService")
+	ErrPreCommitNotInPeerService = errors.New("Failed preCommit's pubkey doesn't exist in peerService")
 )
+
+type ReceiveChannel struct {
+	Propose   chan model.Proposal
+	Vote      chan model.VoteMessage
+	PreCommit chan model.VoteMessage
+}
+
+func NewReceiveChannel(conf *config.BBFTConfig) *ReceiveChannel {
+	return &ReceiveChannel{
+		make(chan model.Proposal, conf.ReceiveProposeProposalPoolLimits),
+		make(chan model.VoteMessage, conf.ReceiveVoteVoteMessagePoolLimits),
+		make(chan model.VoteMessage, conf.ReceiveVoteVoteMessagePoolLimits),
+	}
+}
 
 type ConsensusReceiver interface {
 	Propagate(tx model.Transaction) error
@@ -20,24 +36,26 @@ type ConsensusReceiver interface {
 }
 
 type ConsensusReceieverUsecase struct {
-	queue  dba.ProposalTxQueue
-	ps     dba.PeerService
-	lock   dba.Lock
-	pool   dba.ReceiverPool
-	bc     dba.BlockChain
-	slv    model.StatelessValidator
-	sender model.ConsensusSender
+	queue       dba.ProposalTxQueue
+	ps          dba.PeerService
+	lock        dba.Lock
+	pool        dba.ReceiverPool
+	bc          dba.BlockChain
+	slv         model.StatelessValidator
+	sender      model.ConsensusSender
+	ReceiveChan *ReceiveChannel
 }
 
-func NewConsensusReceiverUsecase(queue dba.ProposalTxQueue, ps dba.PeerService, lock dba.Lock, pool dba.ReceiverPool, bc dba.BlockChain, slv model.StatelessValidator, sender model.ConsensusSender) ConsensusReceiver {
+func NewConsensusReceiverUsecase(queue dba.ProposalTxQueue, ps dba.PeerService, lock dba.Lock, pool dba.ReceiverPool, bc dba.BlockChain, slv model.StatelessValidator, sender model.ConsensusSender, channel *ReceiveChannel) ConsensusReceiver {
 	return &ConsensusReceieverUsecase{
-		queue:  queue,
-		ps:     ps,
-		lock:   lock,
-		pool:   pool,
-		bc:     bc,
-		slv:    slv,
-		sender: sender,
+		queue:       queue,
+		ps:          ps,
+		lock:        lock,
+		pool:        pool,
+		bc:          bc,
+		slv:         slv,
+		sender:      sender,
+		ReceiveChan: channel,
 	}
 }
 
@@ -111,6 +129,7 @@ func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	result = multierr.Append(result, <-errs)
 	result = multierr.Append(result, <-errs)
 	result = multierr.Append(result, <-errs)
+	c.ReceiveChan.Propose <- proposal
 	return result
 }
 
@@ -152,16 +171,42 @@ func (c *ConsensusReceieverUsecase) Vote(vote model.VoteMessage) error {
 	result = multierr.Append(result, <-errs)
 	result = multierr.Append(result, <-errs)
 	result = multierr.Append(result, <-errs)
+	c.ReceiveChan.Vote <- vote
 	return result
 }
 
 func (c *ConsensusReceieverUsecase) PreCommit(preCommit model.VoteMessage) error {
-	if preCommit == nil {
+	if preCommit == nil { // InvalidArgument (code = 3)
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "preCommit is nil")
 	}
-
-	if err := c.sender.PreCommit(preCommit); err != nil {
-		return errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+	if err := preCommit.Verify(); err != nil { // InvalidArgument (code = 3)
+		return errors.Wrapf(model.ErrVoteMessageVerify, err.Error())
 	}
-	return nil
+	if _, ok := c.ps.GetPeer(preCommit.GetSignature().GetPubkey()); !ok { // InvalidArgument (code = 3)
+		return errors.Wrapf(ErrPreCommitNotInPeerService, "pubkey: %x", preCommit.GetSignature().GetPubkey())
+	}
+	if c.pool.IsExistPreCommit(preCommit) { // AlreadyExist (code = 6)
+		return errors.Wrapf(ErrAlradyReceivedSameObject, "preCommit: %#v", preCommit)
+	}
+
+	// after parallel
+	errs := make(chan error)
+	go func() {
+		if err := c.pool.SetPreCommit(preCommit); err != nil {
+			errs <- errors.Wrap(dba.ErrReceiverPoolSet, err.Error())
+		}
+		errs <- nil
+	}()
+	go func() {
+		if err := c.sender.PreCommit(preCommit); err != nil {
+			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+		}
+		errs <- nil
+	}()
+	var result error
+	result = multierr.Append(result, <-errs)
+	result = multierr.Append(result, <-errs)
+	c.ReceiveChan.PreCommit <- preCommit
+	return result
+
 }

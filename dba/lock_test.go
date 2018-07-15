@@ -2,7 +2,6 @@ package dba_test
 
 import (
 	"github.com/pkg/errors"
-	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/convertor"
 	. "github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
@@ -180,12 +179,12 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 }
 
 func TestLockOnMemory_RegisterProposal(t *testing.T) {
-	lock := NewLockOnMemory(NewPeerServiceOnMemory(), config.GetTestConfig())
+	lock := NewLockOnMemory(NewPeerServiceOnMemory(), GetTestConfig())
 	testLock_RegisterProposal(t, lock)
 }
 
 func TestLockOnMemory_AddVoteMessageAndGetLocked(t *testing.T) {
 	ps := NewPeerServiceOnMemory()
-	lock := NewLockOnMemory(ps, config.GetTestConfig())
+	lock := NewLockOnMemory(ps, GetTestConfig())
 	testLock_AddVoteMessageAndGetLocked(t, lock, ps)
 }

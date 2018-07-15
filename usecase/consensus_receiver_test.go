@@ -9,6 +9,7 @@ import (
 	. "github.com/satellitex/bbft/usecase"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"sync"
 )
 
 func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, dba.Lock, model.ConsensusSender, ConsensusReceiver) {
@@ -56,19 +57,22 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 		}
 	}
 
-
-	t.Run("DoS test", func(t *testing.T) {
+	t.Run("DoS safety test", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
 		for i := 0; i < GetTestConfig().QueueLimits; i++ {
+			waiter.Add(1)
 			go func() {
 				err := receiver.Propagate(RandomValidTx(t))
 				assert.NoError(t, err)
+				waiter.Done()
 			}()
 		}
+		waiter.Wait()
 		for i := 0; i < 100; i++ {
-			//go func() {
+			go func() {
 				err := receiver.Propagate(RandomValidTx(t))
 				assert.EqualError(t, errors.Cause(err), dba.ErrProposalTxQueuePush.Error())
-			//}()
+			}()
 		}
 	})
 }

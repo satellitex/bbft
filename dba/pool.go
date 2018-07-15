@@ -5,6 +5,7 @@ import (
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/model"
 	"strconv"
+	"sync"
 )
 
 var (
@@ -21,13 +22,17 @@ type hasherPoolOnMemory struct {
 	mp    map[string]model.Hasher
 	q     []string
 	limit int
+	mutex *sync.Mutex
 }
 
 func newHasherPoolOnMemory(limit int) hasherPool {
-	return &hasherPoolOnMemory{make(map[string]model.Hasher), make([]string, 0, limit), limit}
+	return &hasherPoolOnMemory{make(map[string]model.Hasher), make([]string, 0, limit), limit,new(sync.Mutex)}
 }
 
 func (t *hasherPoolOnMemory) set(hasher model.Hasher) error {
+	defer t.mutex.Unlock()
+	t.mutex.Lock()
+	
 	if hasher == nil {
 		return errors.New("set object is nil")
 	}

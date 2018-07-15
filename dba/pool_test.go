@@ -71,6 +71,17 @@ func testReceiverPoolOnMemory(t *testing.T, pool ReceiverPool) {
 		assert.EqualError(t, errors.Cause(err), model.ErrInvalidVoteMessage.Error())
 	})
 
+	t.Run("success paralell set", func(t *testing.T) {
+		for i := 0; i < GetTestConfig().ReceivePropagateTxPoolLimits * 2; i++ {
+			tx := RandomValidTx(t)
+			go func() {
+				assert.NoError(t, pool.SetPropagate(tx))
+			}()
+			go func() {
+				pool.IsExistPropagate(tx)
+			}()
+		}
+	})
 }
 
 func TestReceiverPoolOnMemory(t *testing.T) {

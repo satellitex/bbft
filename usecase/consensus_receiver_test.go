@@ -8,6 +8,7 @@ import (
 	. "github.com/satellitex/bbft/test_utils"
 	. "github.com/satellitex/bbft/usecase"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 )
@@ -71,18 +72,21 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 		}
 		waiter.Wait()
 		for i := 0; i < 100; i++ {
+			waiter.Add(1)
 			go func() {
 				err := receiver.Propagate(RandomValidTx(t))
 				assert.EqualError(t, errors.Cause(err), dba.ErrProposalTxQueuePush.Error())
+				waiter.Done()
 			}()
 		}
+		waiter.Wait()
 	})
 }
 
 func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 	_, _, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
 	t.Run("success case", func(t *testing.T) {
-		proposal := RandomProposalWithHeightRound(t, 0,0)
+		proposal := RandomProposalWithHeightRound(t, 0, 0)
 		err := receiver.Propose(proposal)
 		assert.NoError(t, err)
 		assert.Equal(t, proposal, sender.(*convertor.MockConsensusSender).Proposal)
@@ -91,6 +95,36 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 	t.Run("failed case input nil", func(t *testing.T) {
 		err := receiver.Propose(nil)
 		assert.EqualError(t, errors.Cause(err), model.ErrInvalidProposal.Error())
+	})
+
+	t.Run("failed case input propose", func(t *testing.T) {
+		block := RandomInvalidBlock(t)
+		proposal, err := convertor.NewModelFactory().NewProposal(block, 1)
+		require.NoError(t, err)
+		err = receiver.Propose(proposal)
+		assert.EqualError(t, errors.Cause(err), model.ErrStatelessBlockValidate.Error())
+	})
+
+	t.Run("failed case already exist", func(t *testing.T) {
+		proposal := RandomProposal(t)
+		err := receiver.Propose(proposal)
+		require.NoError(t, err)
+
+		err = receiver.Propose(proposal)
+		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
+	})
+
+	t.Run("DoS safety test", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
+		for i := 0; i < GetTestConfig().ReceiveProposeProposalPoolLimits * 2; i++ {
+			waiter.Add(1)
+			go func() {
+				err := receiver.Propose(RandomProposal(t))
+				assert.NoError(t, err)
+				waiter.Done()
+			}()
+		}
+		waiter.Wait()
 	})
 }
 

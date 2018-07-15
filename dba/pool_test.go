@@ -7,6 +7,7 @@ import (
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"sync"
 )
 
 func testReceiverPoolOnMemory(t *testing.T, pool ReceiverPool) {
@@ -72,15 +73,20 @@ func testReceiverPoolOnMemory(t *testing.T, pool ReceiverPool) {
 	})
 
 	t.Run("success paralell set", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
 		for i := 0; i < GetTestConfig().ReceivePropagateTxPoolLimits*2; i++ {
+			waiter.Add(2)
 			tx := RandomValidTx(t)
 			go func() {
 				assert.NoError(t, pool.SetPropagate(tx))
+				waiter.Done()
 			}()
 			go func() {
 				pool.IsExistPropagate(tx)
+				waiter.Done()
 			}()
 		}
+		waiter.Wait()
 	})
 }
 

@@ -29,7 +29,7 @@ func RandomCommitableBlock(t *testing.T, bc dba.BlockChain) model.Block {
 }
 
 func RandomProposal(t *testing.T) model.Proposal {
-	proposal, err := convertor.NewModelFactory().NewProposal(RandomValidBlock(t), rand.Int63())
+	proposal, err := convertor.NewModelFactory().NewProposal(RandomValidBlock(t), rand.Int31())
 	require.NoError(t, err)
 	return proposal
 }

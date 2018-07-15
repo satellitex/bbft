@@ -10,6 +10,7 @@ import (
 var (
 	ErrProposalTxQueueLimits         = errors.Errorf("PropposalTxQueue run limit reached")
 	ErrProposalTxQueueAlreadyExistTx = errors.Errorf("Failed Push Already Exist Tx")
+	ErrProposalTxQueuePush           = errors.Errorf("Failed ProposalTxQueue Push")
 )
 
 type ProposalTxQueue interface {

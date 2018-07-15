@@ -66,10 +66,10 @@ func testProposalTxQueue(t *testing.T, queue ProposalTxQueue) {
 		assert.False(t, ok)
 	})
 
-	t.Run("Failed, alrady exist tx", func(t *testing.T){
+	t.Run("Failed, alrady exist tx", func(t *testing.T) {
 		tx := RandomValidTx(t)
 		err := queue.Push(tx)
-		require.NoError(t,err)
+		require.NoError(t, err)
 
 		err = queue.Push(tx)
 		assert.EqualError(t, errors.Cause(err), ErrProposalTxQueueAlreadyExistTx.Error())

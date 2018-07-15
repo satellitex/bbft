@@ -36,7 +36,7 @@ func (_ *ModelFactory) NewBlock(height int64, preBlockHash []byte, createdTime i
 	}, nil
 }
 
-func (_ *ModelFactory) NewProposal(block model.Block, round int64) (model.Proposal, error) {
+func (_ *ModelFactory) NewProposal(block model.Block, round int32) (model.Proposal, error) {
 	b, ok := block.(*Block)
 	if !ok {
 		return nil, errors.Wrapf(model.ErrInvalidBlock,

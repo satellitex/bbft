@@ -32,5 +32,5 @@ type BlockHeader interface {
 
 type Proposal interface {
 	GetBlock() Block
-	GetRound() int64
+	GetRound() int32
 }

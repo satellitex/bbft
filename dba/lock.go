@@ -41,10 +41,10 @@ type LockOnMemory struct {
 }
 
 var (
-	ErrLockRegisteredProposal  = errors.Errorf("Faild Lock Registered Proposal")
-	ErrValidLockedProposal     = errors.Errorf("Failed Valid Locked Proposal")
-	ErrAlreadyAddVoteMessage   = errors.Errorf("Failed Alrady add same VoteMessage")
-	ErrAlreadyRegisterProposal = errors.Errorf("Failed Alrady register same Proposal")
+	ErrLockAddVoteMessage          = errors.New("Failed Lock Add VoteMessage")
+	ErrLockRegisteredProposal  = errors.New("Faild Lock Registered Proposal")
+	ErrAlreadyAddVoteMessage   = errors.New("Failed Alrady add same VoteMessage")
+	ErrAlreadyRegisterProposal = errors.New("Failed Alrady register same Proposal")
 )
 
 func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
@@ -66,13 +66,6 @@ func getAllowFailed(ps PeerService) int {
 
 func getRequiredAccepet(ps PeerService) int {
 	return getAllowFailed(ps)*2 + 1
-}
-
-func validInPeerService(vote model.VoteMessage, ps PeerService) bool {
-	if _, ok := ps.GetPeer(vote.GetSignature().GetPubkey()); ok {
-		return true
-	}
-	return false
 }
 
 func validLockedProposal(proposal model.Proposal, lockedProposal model.Proposal) bool {

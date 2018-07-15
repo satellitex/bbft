@@ -22,7 +22,7 @@ func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, db
 	bc := dba.NewBlockChainOnMemory()
 	slv := convertor.NewStatelessValidator()
 	sender := convertor.NewMockConsensusSender()
-	return queue, ps, lock, bc, sender, NewConsensusReceiverUsecase(queue, lock, pool, bc, slv, sender)
+	return queue, ps, lock, bc, sender, NewConsensusReceiverUsecase(queue, ps, lock, pool, bc, slv, sender)
 }
 
 func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
@@ -116,7 +116,7 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 
 	t.Run("DoS safety test", func(t *testing.T) {
 		waiter := &sync.WaitGroup{}
-		for i := 0; i < GetTestConfig().ReceiveProposeProposalPoolLimits * 2; i++ {
+		for i := 0; i < GetTestConfig().ReceiveProposeProposalPoolLimits*2; i++ {
 			waiter.Add(1)
 			go func() {
 				err := receiver.Propose(RandomProposal(t))

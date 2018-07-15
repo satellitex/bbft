@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrAlradyReceivedSameObject = errors.New("Failed Alrady Received Same Object")
+	ErrVoteNotInPeerService     = errors.New("Failed vote's pubkey doesn't exist in peerService")
 )
 
 type ConsensusReceiver interface {
@@ -20,6 +21,7 @@ type ConsensusReceiver interface {
 
 type ConsensusReceieverUsecase struct {
 	queue  dba.ProposalTxQueue
+	ps     dba.PeerService
 	lock   dba.Lock
 	pool   dba.ReceiverPool
 	bc     dba.BlockChain
@@ -27,9 +29,10 @@ type ConsensusReceieverUsecase struct {
 	sender model.ConsensusSender
 }
 
-func NewConsensusReceiverUsecase(queue dba.ProposalTxQueue, lock dba.Lock, pool dba.ReceiverPool, bc dba.BlockChain, slv model.StatelessValidator, sender model.ConsensusSender) ConsensusReceiver {
+func NewConsensusReceiverUsecase(queue dba.ProposalTxQueue, ps dba.PeerService, lock dba.Lock, pool dba.ReceiverPool, bc dba.BlockChain, slv model.StatelessValidator, sender model.ConsensusSender) ConsensusReceiver {
 	return &ConsensusReceieverUsecase{
 		queue:  queue,
+		ps:     ps,
 		lock:   lock,
 		pool:   pool,
 		bc:     bc,
@@ -109,18 +112,47 @@ func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	result = multierr.Append(result, <-errs)
 	result = multierr.Append(result, <-errs)
 	return result
-	return nil
 }
 
 func (c *ConsensusReceieverUsecase) Vote(vote model.VoteMessage) error {
-	if vote == nil {
+	if vote == nil { // InvalidArgument (code = 3)
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "vote is nil")
 	}
-
-	if err := c.sender.Vote(vote); err != nil {
-		return errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+	if err := vote.Verify(); err != nil { // InvalidArgument (code = 3)
+		return errors.Wrapf(model.ErrVoteMessageVerify, err.Error())
 	}
-	return nil
+	if _, ok := c.ps.GetPeer(vote.GetSignature().GetPubkey()); !ok { // InvalidArgument (code = 3)
+		return errors.Wrapf(ErrVoteNotInPeerService, "pubkey: %x", vote.GetSignature().GetPubkey())
+	}
+	if c.pool.IsExistVote(vote) { // AlreadyExist (code = 6)
+		return errors.Wrapf(ErrAlradyReceivedSameObject, "vote: %#v", vote)
+	}
+
+	// after parallel
+	errs := make(chan error)
+	go func() {
+		if err := c.lock.AddVoteMessage(vote); err != nil {
+			errs <- errors.Wrapf(dba.ErrLockAddVoteMessage, err.Error())
+		}
+		errs <- nil
+	}()
+	go func() {
+		if err := c.pool.SetVote(vote); err != nil {
+			errs <- errors.Wrap(dba.ErrReceiverPoolSet, err.Error())
+		}
+		errs <- nil
+	}()
+	go func() {
+		if err := c.sender.Vote(vote); err != nil {
+			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+		}
+		errs <- nil
+	}()
+	var result error
+	result = multierr.Append(result, <-errs)
+	result = multierr.Append(result, <-errs)
+	result = multierr.Append(result, <-errs)
+	return result
 }
 
 func (c *ConsensusReceieverUsecase) PreCommit(preCommit model.VoteMessage) error {

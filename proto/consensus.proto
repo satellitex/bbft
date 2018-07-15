@@ -60,10 +60,11 @@ service ConsensusGate {
      *
      * InvalidArgument (code = 3) : One of following conditions:
      *  1 ) 署名が異なる場合
+     *  2 ) Pubkey が合意形成に参加している Peer でない場合
+     * AlreadyExist (code = 6) : One of following conditions:
+     *  1 ) 既に同じ Vote を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) 署名の主が合意形成に参加している Peer でない場合
-     * FailedPrecondition (code = 9) : One of following conditions:
-     *  1 ) 既に同じ Vote を受け取っていた場合
      **/
     rpc Vote (VoteMessage) returns (ConsensusResponse);
 

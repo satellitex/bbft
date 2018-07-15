@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrHasherPoolSet = errors.New("Failed Hasher Pool Set")
+	ErrHasherPoolSet   = errors.New("Failed Hasher Pool Set")
+	ErrReceiverPoolSet = errors.New("Failed Reveiver Pool Set")
 )
 
 type hasherPool interface {

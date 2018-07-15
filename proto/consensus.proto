@@ -30,8 +30,12 @@ service ConsensusGate {
      *
      * InvalidArgument (code = 3) : One of following conditions:
      *  3 ) 署名が異なる場合
+     * AlreadyExist (code = 6) : One of following conditions:
+     *  1 ) 既に同じ Block を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
-     *  1 ) TODO : 署名の主がPeerでない場合
+     *  1 ) 署名の主がPeerでない場合
+     * ResourceExhausted (code = 8) : One of following conditions:
+     *  1 ) ProposalTxQueue が詰まっている場合
      **/
     rpc Propagate (Transaction) returns (ConsensusResponse);
 

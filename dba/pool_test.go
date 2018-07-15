@@ -6,8 +6,8 @@ import (
 	"github.com/satellitex/bbft/model"
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 	"sync"
+	"testing"
 )
 
 func testReceiverPoolOnMemory(t *testing.T, pool ReceiverPool) {

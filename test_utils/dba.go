@@ -40,7 +40,7 @@ func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	return vote
 }
 
-func RandomVoteMesssageFromPeer(t *testing.T, peer model.Peer) model.VoteMessage {
+func RandomVoteMessageFromPeer(t *testing.T, peer model.Peer) model.VoteMessage {
 	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
 	vote.Sign(peer.GetPubkey(), peer.(*PeerWithPriv).PrivKey)
 	return vote

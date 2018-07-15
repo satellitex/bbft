@@ -41,7 +41,7 @@ type LockOnMemory struct {
 }
 
 var (
-	ErrLockAddVoteMessage          = errors.New("Failed Lock Add VoteMessage")
+	ErrLockAddVoteMessage      = errors.New("Failed Lock Add VoteMessage")
 	ErrLockRegisteredProposal  = errors.New("Faild Lock Registered Proposal")
 	ErrAlreadyAddVoteMessage   = errors.New("Failed Alrady add same VoteMessage")
 	ErrAlreadyRegisterProposal = errors.New("Failed Alrady register same Proposal")

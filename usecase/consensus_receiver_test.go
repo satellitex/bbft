@@ -97,7 +97,7 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 		assert.EqualError(t, errors.Cause(err), model.ErrInvalidProposal.Error())
 	})
 
-	t.Run("failed case input propose", func(t *testing.T) {
+	t.Run("failed case input unverified propose", func(t *testing.T) {
 		block := RandomInvalidBlock(t)
 		proposal, err := convertor.NewModelFactory().NewProposal(block, 1)
 		require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestConsensusReceieverUsecase_Vote(t *testing.T) {
 	}
 
 	t.Run("success case", func(t *testing.T) {
-		vote := RandomVoteMesssageFromPeer(t, peers[0])
+		vote := RandomVoteMessageFromPeer(t, peers[0])
 		err := receiver.Vote(vote)
 		assert.NoError(t, err)
 		assert.Equal(t, vote, sender.(*convertor.MockConsensusSender).VoteMessage)
@@ -152,6 +152,40 @@ func TestConsensusReceieverUsecase_Vote(t *testing.T) {
 		assert.EqualError(t, errors.Cause(err), model.ErrInvalidVoteMessage.Error())
 	})
 
+	t.Run("failed case input unverified vote", func(t *testing.T) {
+		vote := RandomVoteMessage(t)
+		vote.(*convertor.VoteMessage).Signature = nil
+		err := receiver.Vote(vote)
+		assert.EqualError(t, errors.Cause(err), model.ErrVoteMessageVerify.Error())
+	})
+
+	t.Run("failed case input not peers vote", func(t *testing.T) {
+		vote := RandomVoteMessage(t)
+		err := receiver.Vote(vote)
+		assert.EqualError(t, errors.Cause(err), ErrVoteNotInPeerService.Error())
+	})
+
+	t.Run("fialed case already exist vote", func(t *testing.T) {
+		vote := RandomVoteMessageFromPeer(t, peers[0])
+		err := receiver.Vote(vote)
+		require.NoError(t, err)
+
+		err = receiver.Vote(vote)
+		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
+	})
+
+	t.Run("DoS safety test", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
+		for i := 0; i < GetTestConfig().ReceiveVoteVoteMessagePoolLimits*2; i++ {
+			waiter.Add(1)
+			go func() {
+				err := receiver.Vote(RandomVoteMessageFromPeer(t, peers[1]))
+				assert.NoError(t, err)
+				waiter.Done()
+			}()
+		}
+		waiter.Wait()
+	})
 }
 
 func TestConsensusReceieverUsecase_PreCommit(t *testing.T) {

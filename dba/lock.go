@@ -35,7 +35,9 @@ type LockOnMemory struct {
 	findedVote      map[string]model.VoteMessage
 	votedQueue      []string
 
-	mutex *sync.Mutex
+	registerdLimits int
+	votedLimits     int
+	mutex           *sync.Mutex
 }
 
 var (
@@ -52,6 +54,8 @@ func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
 		make(map[string]model.Proposal), make([]string, 0, cnf.LockedRegisteredLimits),
 		make(map[string]int),
 		make(map[string]model.VoteMessage), make([]string, 0, cnf.LockedVotedLimits),
+		cnf.LockedRegisteredLimits,
+		cnf.LockedVotedLimits,
 		new(sync.Mutex),
 	}
 }
@@ -90,9 +94,6 @@ func (lock *LockOnMemory) checkAndLock(hash string) {
 }
 
 func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
-	lock.mutex.Lock()
-	defer lock.mutex.Unlock()
-
 	if proposal == nil {
 		return errors.Wrapf(model.ErrInvalidProposal, "Proposal is nil")
 	}
@@ -100,12 +101,16 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 	if err != nil {
 		return errors.Wrapf(model.ErrBlockGetHash, err.Error())
 	}
+
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+
 	if _, ok := lock.registerdProposals[string(hash)]; ok {
 		return errors.Wrapf(ErrAlreadyRegisterProposal, "alrady register proposal: %#v", proposal)
 	}
 
 	// === register proposal ===
-	if len(lock.registeredQueue) >= cap(lock.registeredQueue) { // shifts Limits
+	if len(lock.registeredQueue) >= lock.registerdLimits { // shifts Limits
 		delete(lock.registerdProposals, lock.registeredQueue[0])
 		lock.registeredQueue = lock.registeredQueue[1:]
 	}
@@ -117,21 +122,22 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 }
 
 func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) error {
-	lock.mutex.Lock()
-	defer lock.mutex.Unlock()
-
 	if vote == nil {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
 	}
 
 	hash := string(vote.GetBlockHash())
 	pub := string(vote.GetSignature().GetPubkey())
+
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+
 	if _, ok := lock.findedVote[hash+pub]; ok {
 		return errors.Wrapf(ErrAlreadyAddVoteMessage, "already add vote: %#v", vote)
 	}
 
 	// === add vote ===
-	if len(lock.votedQueue) >= cap(lock.votedQueue) { // shifts Limits
+	if len(lock.votedQueue) >= lock.votedLimits { // shifts Limits
 		delete(lock.acceptedCounter, string(lock.findedVote[lock.votedQueue[0]].GetBlockHash()))
 		delete(lock.findedVote, lock.votedQueue[0])
 		lock.votedQueue = lock.votedQueue[1:]

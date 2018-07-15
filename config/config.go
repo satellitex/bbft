@@ -1,6 +1,8 @@
 package config
 
-import _ "github.com/kelseyhightower/envconfig"
+import (
+	_ "github.com/kelseyhightower/envconfig"
+)
 
 type BBFTConfig struct {
 	Host                                  string `default:"localhost"`

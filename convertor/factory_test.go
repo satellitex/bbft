@@ -92,31 +92,31 @@ func TestProposalFactory(t *testing.T) {
 		name          string
 		expectedError error
 		expectedBlock model.Block
-		expectedRound int64
+		expectedRound int32
 	}{
 		{
 			"case 1",
 			nil,
 			RandomBlock(t),
-			rand.Int63(),
+			rand.Int31(),
 		},
 		{
 			"case 2",
 			nil,
 			RandomBlock(t),
-			rand.Int63(),
+			rand.Int31(),
 		},
 		{
 			"case 3",
 			nil,
 			RandomBlock(t),
-			rand.Int63(),
+			rand.Int31(),
 		},
 		{
 			"block nil case",
 			model.ErrInvalidBlock,
 			nil,
-			rand.Int63(),
+			rand.Int31(),
 		},
 		{
 			"round -1 case",

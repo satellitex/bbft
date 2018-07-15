@@ -1,14 +1,14 @@
 package convertor
 
 type Peer struct {
-	address string
-	pubkey  []byte
+	Address string
+	Pubkey  []byte
 }
 
 func (p *Peer) GetAddress() string {
-	return p.address
+	return p.Address
 }
 
 func (p *Peer) GetPubkey() []byte {
-	return p.pubkey
+	return p.Pubkey
 }

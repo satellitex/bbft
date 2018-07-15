@@ -1,75 +1,99 @@
 package dba
 
 import (
-	"bytes"
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/model"
 	"sync"
 )
 
+// Lock は 2/3以上のAcceptedVoteを獲得したProposalを管理する
+//
+// 各 Height について、 2/3以上の AcceptedVote を獲得した Proposal が複数あるとき Round の大きい方の Lock を取る。
 type Lock interface {
+	// Proposal を登録する。
 	RegisterProposal(model.Proposal) error
-	AddVoteMessage(vote model.VoteMessage) (bool, error)
-	GetLockedProposal() (model.Proposal, bool)
+
+	// Vote を登録する。
+	// Error Case )
+	// 	1 ) Vote が nil の場合
+	//  2 ) 既にそのVoteが登録されていた場合
+	AddVoteMessage(vote model.VoteMessage) error
+	// 高さ height における Lock を取得する。存在しなければ bool = false, otherwise true
+	GetLockedProposal(height int64) (model.Proposal, bool)
+	// ある高さ未満の Lock をすべて消す。
+	Clean(height int64)
 }
 
 type LockOnMemory struct {
 	peerService        PeerService
-	lockedProposal     model.Proposal
+	lockedProposal     map[int64]model.Proposal
 	registerdProposals map[string]model.Proposal
-	acceptedPrposal    map[string]int
-	mutex              *sync.Mutex
+	registeredQueue    []string
+
+	acceptedCounter map[string]int
+	findedVote      map[string]model.VoteMessage
+	votedQueue      []string
+
+	registerdLimits int
+	votedLimits     int
+	mutex           *sync.Mutex
 }
 
 var (
-	ErrSetLockedProposal = errors.Errorf("Failed SetLocked Proposal")
+	ErrLockAddVoteMessage      = errors.New("Failed Lock Add VoteMessage")
+	ErrLockRegisteredProposal  = errors.New("Faild Lock Registered Proposal")
+	ErrAlreadyAddVoteMessage   = errors.New("Failed Alrady add same VoteMessage")
+	ErrAlreadyRegisterProposal = errors.New("Failed Alrady register same Proposal")
 )
 
-func NewLockOnMemory(peerService PeerService) Lock {
+func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
 	return &LockOnMemory{
 		peerService,
-		nil, make(map[string]model.Proposal),
-		make(map[string]int), new(sync.Mutex),
+		make(map[int64]model.Proposal),
+		make(map[string]model.Proposal), make([]string, 0, cnf.LockedRegisteredLimits),
+		make(map[string]int),
+		make(map[string]model.VoteMessage), make([]string, 0, cnf.LockedVotedLimits),
+		cnf.LockedRegisteredLimits,
+		cnf.LockedVotedLimits,
+		new(sync.Mutex),
 	}
 }
 
-func (lock *LockOnMemory) getAllowFailed() int {
-	return (lock.peerService.Size() - 1) / 3
+func getAllowFailed(ps PeerService) int {
+	return (ps.Size() - 1) / 3
 }
 
-func (lock *LockOnMemory) getRequiredAccepet() int {
-	return lock.getAllowFailed()*2 + 1
+func getRequiredAccepet(ps PeerService) int {
+	return getAllowFailed(ps)*2 + 1
 }
 
-func (lock *LockOnMemory) setLockedProposal(proposal model.Proposal) (bool, error) {
+func validLockedProposal(proposal model.Proposal, lockedProposal model.Proposal) bool {
 	if proposal == nil {
-		return false, errors.Errorf("set proposal is nil")
+		return false
 	}
-	if lock.lockedProposal == nil {
-		lock.lockedProposal = proposal
-		return true, nil
+	if lockedProposal == nil {
+		return true
 	} else {
-		lockedHash, err := lock.lockedProposal.GetBlock().GetHash()
-		if err != nil {
-			return false, errors.Wrapf(model.ErrBlockGetHash, "locked Hash: "+err.Error())
-		}
-		newHash, err := proposal.GetBlock().GetHash()
-		if err != nil {
-			return false, errors.Wrapf(model.ErrBlockGetHash, "new Hash: "+err.Error())
-		}
-		if !bytes.Equal(lockedHash, newHash) &&
-			proposal.GetRound() > lock.lockedProposal.GetRound() {
-			lock.lockedProposal = proposal
-			return true, nil
+		if proposal.GetRound() > lockedProposal.GetRound() {
+			return true
 		}
 	}
-	return false, nil
+	return false
+}
+
+func (lock *LockOnMemory) checkAndLock(hash string) {
+	if proposal, ok := lock.registerdProposals[hash]; ok {
+		height := proposal.GetBlock().GetHeader().GetHeight()
+		if getRequiredAccepet(lock.peerService) <= lock.acceptedCounter[hash] {
+			if ok := validLockedProposal(proposal, lock.lockedProposal[height]); ok {
+				lock.lockedProposal[height] = proposal
+			}
+		}
+	}
 }
 
 func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
-	defer lock.mutex.Unlock()
-	lock.mutex.Lock()
-
 	if proposal == nil {
 		return errors.Wrapf(model.ErrInvalidProposal, "Proposal is nil")
 	}
@@ -77,34 +101,71 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 	if err != nil {
 		return errors.Wrapf(model.ErrBlockGetHash, err.Error())
 	}
+
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+
+	if _, ok := lock.registerdProposals[string(hash)]; ok {
+		return errors.Wrapf(ErrAlreadyRegisterProposal, "alrady register proposal: %#v", proposal)
+	}
+
+	// === register proposal ===
+	if len(lock.registeredQueue) >= lock.registerdLimits { // shifts Limits
+		delete(lock.registerdProposals, lock.registeredQueue[0])
+		lock.registeredQueue = lock.registeredQueue[1:]
+	}
 	lock.registerdProposals[string(hash)] = proposal
+	lock.registeredQueue = append(lock.registeredQueue, string(hash))
+	// =========================
+	lock.checkAndLock(string(hash))
 	return nil
 }
 
-func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
-	defer lock.mutex.Unlock()
-	lock.mutex.Lock()
-
+func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) error {
 	if vote == nil {
-		return false, errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
+		return errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
 	}
+
 	hash := string(vote.GetBlockHash())
-	lock.acceptedPrposal[hash]++
-	if lock.acceptedPrposal[hash] >= lock.getRequiredAccepet() {
-		if ok, err := lock.setLockedProposal(lock.registerdProposals[hash]); !ok {
-			if err != nil {
-				return false, errors.Wrapf(ErrSetLockedProposal, err.Error())
-			}
-		} else {
-			return true, nil
-		}
+	pub := string(vote.GetSignature().GetPubkey())
+
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+
+	if _, ok := lock.findedVote[hash+pub]; ok {
+		return errors.Wrapf(ErrAlreadyAddVoteMessage, "already add vote: %#v", vote)
 	}
-	return false, nil
+
+	// === add vote ===
+	if len(lock.votedQueue) >= lock.votedLimits { // shifts Limits
+		delete(lock.acceptedCounter, string(lock.findedVote[lock.votedQueue[0]].GetBlockHash()))
+		delete(lock.findedVote, lock.votedQueue[0])
+		lock.votedQueue = lock.votedQueue[1:]
+	}
+	lock.findedVote[hash+pub] = vote
+	lock.votedQueue = append(lock.votedQueue, hash+pub)
+	lock.acceptedCounter[hash]++
+	// ================
+
+	lock.checkAndLock(hash)
+	return nil
 }
 
-func (lock *LockOnMemory) GetLockedProposal() (model.Proposal, bool) {
-	if lock.lockedProposal == nil {
-		return nil, false
+func (lock *LockOnMemory) GetLockedProposal(height int64) (model.Proposal, bool) {
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+	if ret, ok := lock.lockedProposal[height]; ok {
+		return ret, true
 	}
-	return lock.lockedProposal, true
+	return nil, false
+}
+
+func (lock *LockOnMemory) Clean(height int64) {
+	lock.mutex.Lock()
+	defer lock.mutex.Unlock()
+	for k, _ := range lock.lockedProposal {
+		if k < height {
+			delete(lock.lockedProposal, k)
+		}
+	}
 }

@@ -2,12 +2,15 @@ package dba
 
 import (
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/model"
 	"sync"
 )
 
 var (
-	ErrProposalTxQueueLimits = errors.Errorf("PropposalTxQueue run limit reached")
+	ErrProposalTxQueueLimits         = errors.Errorf("PropposalTxQueue run limit reached")
+	ErrProposalTxQueueAlreadyExistTx = errors.Errorf("Failed Push Already Exist Tx")
+	ErrProposalTxQueuePush           = errors.Errorf("Failed ProposalTxQueue Push")
 )
 
 type ProposalTxQueue interface {
@@ -16,27 +19,38 @@ type ProposalTxQueue interface {
 }
 
 type ProposalTxQueueOnMemory struct {
-	mutex *sync.Mutex
-	limit int
-	queue []model.Transaction
+	mutex  *sync.Mutex
+	limit  int
+	queue  []model.Transaction
+	findTx map[string]model.Transaction
 }
 
-func NewProposalTxQueueOnMemory(limit int) ProposalTxQueue {
+func NewProposalTxQueueOnMemory(conf *config.BBFTConfig) ProposalTxQueue {
 	return &ProposalTxQueueOnMemory{
 		new(sync.Mutex),
-		limit,
-		make([]model.Transaction, 0, limit),
+		conf.QueueLimits,
+		make([]model.Transaction, 0, conf.QueueLimits),
+		make(map[string]model.Transaction),
 	}
 }
 
 func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
-	defer q.mutex.Unlock()
 	q.mutex.Lock()
+	defer q.mutex.Unlock()
 
 	if tx == nil {
 		return errors.Wrapf(model.ErrInvalidTransaction, "push transaction is nil")
 	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		return errors.Wrapf(model.ErrTransactionGetHash, err.Error())
+	}
+	if _, ok := q.findTx[string(hash)]; ok {
+		return errors.Wrapf(ErrProposalTxQueueAlreadyExistTx, "already tx : %x, push to proposal tx queue", hash)
+	}
 	if len(q.queue) < q.limit {
+		q.findTx[string(hash)] = tx
 		q.queue = append(q.queue, tx)
 	} else {
 		return errors.Wrapf(ErrProposalTxQueueLimits, "queue's max length: %d", q.limit)
@@ -45,10 +59,14 @@ func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
 }
 
 func (q *ProposalTxQueueOnMemory) Pop() (model.Transaction, bool) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
 	if len(q.queue) == 0 {
 		return nil, false
 	}
 	front := q.queue[0]
+	delete(q.findTx, string(model.MustGetHash(front)))
 	q.queue = q.queue[1:]
 	return front, true
 }

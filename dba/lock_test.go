@@ -27,17 +27,40 @@ func testLock_RegisterProposal(t *testing.T, lock Lock) {
 		err := lock.RegisterProposal(proposal)
 		assert.EqualError(t, errors.Cause(err), model.ErrBlockGetHash.Error())
 	})
+	t.Run("failed already register proposal", func(t *testing.T) {
+		proposal := RandomProposal(t)
+		err := lock.RegisterProposal(proposal)
+		assert.NoError(t, err)
+
+		err = lock.RegisterProposal(proposal)
+		assert.EqualError(t, errors.Cause(err), ErrAlreadyRegisterProposal.Error())
+	})
+
+	t.Run("No Memory over flow, when RegisterProposal Attack", func(t *testing.T) {
+		t.Skipf("This test is too long")
+		for i := 0; i < 1000000; i++ {
+			go func() {
+				err := lock.RegisterProposal(RandomProposal(t))
+				assert.NoError(t, err)
+			}()
+		}
+	})
 }
 
 func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService) {
 	// 4 peer
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
-	p.AddPeer(RandomPeer())
+	peers := []model.Peer{
+		RandomPeer(),
+		RandomPeer(),
+		RandomPeer(),
+		RandomPeer(),
+	}
+	for _, peer := range peers {
+		p.AddPeer(peer)
+	}
 
 	validGetLockedProposal := func(t *testing.T, expectedProposal model.Proposal) {
-		proposal, ok := lock.GetLockedProposal()
+		proposal, ok := lock.GetLockedProposal(0)
 		if expectedProposal == nil {
 			assert.False(t, ok)
 		} else {
@@ -48,27 +71,23 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 
 	t.Run("success valid votes", func(t *testing.T) {
 		vote := RandomVoteMessage(t)
-		in, err := lock.AddVoteMessage(vote)
+		err := lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
-		assert.False(t, in)
 
 		validGetLockedProposal(t, nil)
 	})
 	t.Run("faield nil vote", func(t *testing.T) {
-		in, err := lock.AddVoteMessage(nil)
+		err := lock.AddVoteMessage(nil)
 		assert.EqualError(t, errors.Cause(err), model.ErrInvalidVoteMessage.Error())
-		assert.False(t, in)
 
 		validGetLockedProposal(t, nil)
 	})
 
 	// register valid proposal
 	validProposals := []model.Proposal{
-		RandomProposal(t),
-		RandomProposal(t),
-	}
-	if validProposals[0].GetRound() > validProposals[1].GetRound() {
-		validProposals[0], validProposals[1] = validProposals[1], validProposals[0]
+		RandomProposalWithHeightRound(t, 0, 0),
+		RandomProposalWithHeightRound(t, 0, 1),
+		RandomProposalWithHeightRound(t, 0, 2),
 	}
 	lock.RegisterProposal(validProposals[0])
 	lock.RegisterProposal(validProposals[1])
@@ -77,7 +96,7 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 	validAddVote := func(t *testing.T, proposal model.Proposal) {
 		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, proposal.GetBlock()))
 		ValidSign(t, vote)
-		_, err := lock.AddVoteMessage(vote)
+		err := lock.AddVoteMessage(vote)
 		require.NoError(t, err)
 	}
 
@@ -89,17 +108,15 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 
 		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, vp.GetBlock()))
 		ValidSign(t, vote)
-		in, err := lock.AddVoteMessage(vote)
+		err := lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
-		assert.True(t, in)
 
 		validGetLockedProposal(t, vp)
 
 		vote = convertor.NewModelFactory().NewVoteMessage(GetHash(t, vp.GetBlock()))
 		ValidSign(t, vote)
-		in, err = lock.AddVoteMessage(vote)
+		err = lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
-		assert.False(t, in)
 
 		validGetLockedProposal(t, vp)
 	})
@@ -112,36 +129,72 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 
 		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, vp.GetBlock()))
 		ValidSign(t, vote)
-		in, err := lock.AddVoteMessage(vote)
+		err := lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
-		assert.True(t, in)
 
 		validGetLockedProposal(t, vp)
 	})
 
-	t.Run("failed unregisterd Proposal votes, setLockedProposal", func(t *testing.T) {
-		vp := RandomProposal(t)
+	t.Run("success collect Proposal votes, before register proposal", func(t *testing.T) {
+		vp := validProposals[2]
 		validAddVote(t, vp)
 		validAddVote(t, vp)
 		validGetLockedProposal(t, validProposals[1])
 
 		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, vp.GetBlock()))
 		ValidSign(t, vote)
-		in, err := lock.AddVoteMessage(vote)
-		assert.EqualError(t, errors.Cause(err), ErrSetLockedProposal.Error())
-		assert.False(t, in)
+		err := lock.AddVoteMessage(vote)
+		assert.NoError(t, err)
 
 		validGetLockedProposal(t, validProposals[1])
+
+		err = lock.RegisterProposal(vp)
+		assert.NoError(t, err)
+		validGetLockedProposal(t, vp)
 	})
+
+	t.Run("failed alrady exist voteMessage", func(t *testing.T) {
+		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, RandomBlock(t)))
+		ValidSign(t, vote)
+
+		err := lock.AddVoteMessage(vote)
+		assert.NoError(t, err)
+
+		err = lock.AddVoteMessage(vote)
+		assert.EqualError(t, errors.Cause(err), ErrAlreadyAddVoteMessage.Error())
+
+	})
+
+	t.Run("Execute clean lock", func(t *testing.T) {
+		validGetLockedProposal(t, validProposals[2])
+
+		lock.Clean(1)
+
+		validGetLockedProposal(t, nil)
+	})
+
+	t.Run("No Memory over flow, when AddVote Attack", func(t *testing.T) {
+		t.Skip("This test is too long")
+		for i := 0; i < 1000000; i++ {
+			go func() {
+				vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, RandomBlock(t)))
+				ValidSign(t, vote)
+
+				err := lock.AddVoteMessage(vote)
+				require.NoError(t, err)
+			}()
+		}
+	})
+
 }
 
 func TestLockOnMemory_RegisterProposal(t *testing.T) {
-	lock := NewLockOnMemory(NewPeerServiceOnMemory())
+	lock := NewLockOnMemory(NewPeerServiceOnMemory(), GetTestConfig())
 	testLock_RegisterProposal(t, lock)
 }
 
 func TestLockOnMemory_AddVoteMessageAndGetLocked(t *testing.T) {
 	ps := NewPeerServiceOnMemory()
-	lock := NewLockOnMemory(ps)
+	lock := NewLockOnMemory(ps, GetTestConfig())
 	testLock_AddVoteMessageAndGetLocked(t, lock, ps)
 }

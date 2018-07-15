@@ -32,5 +32,5 @@ message Block {
  **/
 message Proposal {
     Block block = 1;
-    int64 round = 2;
+    int32 round = 2;
 }

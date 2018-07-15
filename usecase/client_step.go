@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
 )
 
@@ -9,10 +10,24 @@ type ClientGateReceiver interface {
 }
 
 type ClientGateReceiverUsecase struct {
-	validator model.StatelessValidator
-	factory   model.ModelFactory
+	slv    model.StatelessValidator
+	sender model.ConsensusSender
+}
+
+func NewClientGateReceiverUsecase(validator model.StatelessValidator, sender model.ConsensusSender) ClientGateReceiver {
+	return &ClientGateReceiverUsecase{
+		slv:    validator,
+		sender: sender,
+	}
 }
 
 func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {
+	if err := c.slv.TxValidate(tx); err != nil {
+		return errors.Wrapf(model.ErrStatelessTxValidate, err.Error())
+	}
+	err := c.sender.Propagate(tx)
+	if err != nil {
+		return errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+	}
 	return nil
 }

@@ -4,6 +4,7 @@ jobs:
     working_directory: /go/src/github.com/satellitex/bbft
     docker:
       - image: satellitex/bbft
+        environment:
     steps:
       - checkout
       - restore_cache:

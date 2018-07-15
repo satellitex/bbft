@@ -2,7 +2,6 @@ package dba_test
 
 import (
 	"github.com/pkg/errors"
-	"github.com/satellitex/bbft/config"
 	. "github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	. "github.com/satellitex/bbft/test_utils"
@@ -47,7 +46,7 @@ func testProposalTxQueue(t *testing.T, queue ProposalTxQueue) {
 	})
 
 	t.Run("Failed, over limits random valid tx push", func(t *testing.T) {
-		limit := config.GetTestConfig().QueueLimits
+		limit := GetTestConfig().QueueLimits
 		txs := make([]model.Transaction, 0, limit)
 		for i := 0; i < limit; i++ {
 			txs = append(txs, RandomValidTx(t))
@@ -66,11 +65,18 @@ func testProposalTxQueue(t *testing.T, queue ProposalTxQueue) {
 		_, ok := queue.Pop()
 		assert.False(t, ok)
 	})
+
+	t.Run("Failed, alrady exist tx", func(t *testing.T) {
+		tx := RandomValidTx(t)
+		err := queue.Push(tx)
+		require.NoError(t, err)
+
+		err = queue.Push(tx)
+		assert.EqualError(t, errors.Cause(err), ErrProposalTxQueueAlreadyExistTx.Error())
+	})
 }
 
 func TestProposalTxQueueOnMemory(t *testing.T) {
-	config := config.GetTestConfig()
-
-	queue := NewProposalTxQueueOnMemory(config.QueueLimits)
+	queue := NewProposalTxQueueOnMemory(GetTestConfig())
 	testProposalTxQueue(t, queue)
 }

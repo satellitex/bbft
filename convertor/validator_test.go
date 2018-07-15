@@ -61,21 +61,34 @@ func TestStatelessValidator_Validate(t *testing.T) {
 	slv := NewStatelessValidator()
 	t.Run("success valid key and valid txs", func(t *testing.T) {
 		block := ValidSignedBlock(t)
-		assert.NoError(t, slv.Validate(block))
+		assert.NoError(t, slv.BlockValidate(block))
 	})
 	t.Run("failed valid key and inValid txs", func(t *testing.T) {
 		block := InvalidSingedBlock(t)
-		MultiErrorInCheck(t, slv.Validate(block), model.ErrTransactionVerify)
+		MultiErrorInCheck(t, slv.BlockValidate(block), model.ErrStatelessTxValidate)
 	})
 	t.Run("failed invalid key and valid block", func(t *testing.T) {
 		block := ValidErrSignedBlock(t)
-		MultiErrorInCheck(t, slv.Validate(block), model.ErrBlockVerify)
+		MultiErrorInCheck(t, slv.BlockValidate(block), model.ErrBlockVerify)
 	})
 	t.Run("failed invalid key and invalid block", func(t *testing.T) {
 		block := InvalidErrSignedBlock(t)
-		MultiErrorInCheck(t, errors.Cause(slv.Validate(block)), model.ErrTransactionVerify)
+		MultiErrorInCheck(t, errors.Cause(slv.BlockValidate(block)), model.ErrStatelessTxValidate)
 	})
 	t.Run("failed nil block", func(t *testing.T) {
-		assert.EqualError(t, errors.Cause(slv.Validate(nil)), model.ErrInvalidBlock.Error())
+		assert.EqualError(t, errors.Cause(slv.BlockValidate(nil)), model.ErrInvalidBlock.Error())
+	})
+
+	t.Run("success valid txValidate", func(t *testing.T) {
+		err := slv.TxValidate(RandomValidTx(t))
+		assert.NoError(t, err)
+	})
+	t.Run("failed nil txValidate", func(t *testing.T) {
+		err := slv.TxValidate(nil)
+		assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
+	})
+	t.Run("failed unverified txValidate", func(t *testing.T) {
+		err := slv.TxValidate(RandomInvalidTx(t))
+		assert.EqualError(t, errors.Cause(err), model.ErrTransactionVerify.Error())
 	})
 }

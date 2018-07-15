@@ -29,7 +29,7 @@ func RandomCommitableBlock(t *testing.T, bc dba.BlockChain) model.Block {
 }
 
 func RandomProposal(t *testing.T) model.Proposal {
-	proposal, err := convertor.NewModelFactory().NewProposal(RandomValidBlock(t), rand.Int63())
+	proposal, err := convertor.NewModelFactory().NewProposal(ValidSignedBlock(t), rand.Int31())
 	require.NoError(t, err)
 	return proposal
 }
@@ -38,6 +38,25 @@ func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
 	ValidSign(t, vote)
 	return vote
+}
+
+func RandomVoteMessageFromPeer(t *testing.T, peer model.Peer) model.VoteMessage {
+	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
+	vote.Sign(peer.GetPubkey(), peer.(*PeerWithPriv).PrivKey)
+	return vote
+}
+
+type PeerWithPriv struct {
+	*convertor.Peer
+	PrivKey []byte
+}
+
+func RandomPeerWithPriv() model.Peer {
+	validPub, validPri := convertor.NewKeyPair()
+	return &PeerWithPriv{
+		&convertor.Peer{RandomStr(), validPub},
+		validPri,
+	}
 }
 
 type Signer interface {

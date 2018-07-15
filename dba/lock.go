@@ -86,7 +86,6 @@ func (lock *LockOnMemory) checkAndLock(hash string) {
 	if proposal, ok := lock.registerdProposals[hash]; ok {
 		height := proposal.GetBlock().GetHeader().GetHeight()
 		if getRequiredAccepet(lock.peerService) <= lock.acceptedCounter[hash] {
-			proposal := lock.registerdProposals[hash]
 			if ok := validLockedProposal(proposal, lock.lockedProposal[height]); ok {
 				lock.lockedProposal[height] = proposal
 			}

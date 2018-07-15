@@ -35,9 +35,7 @@ type LockOnMemory struct {
 	findedVote      map[string]model.VoteMessage
 	votedQueue      []string
 
-	lockedLimit int
-	votedLimit  int
-	mutex       *sync.Mutex
+	mutex *sync.Mutex
 }
 
 var (
@@ -51,11 +49,9 @@ func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
 	return &LockOnMemory{
 		peerService,
 		make(map[int64]model.Proposal),
-		make(map[string]model.Proposal), make([]string, cnf.LockedRegisteredLimits),
+		make(map[string]model.Proposal), make([]string, 0, cnf.LockedRegisteredLimits),
 		make(map[string]int),
-		make(map[string]model.VoteMessage), make([]string, cnf.LockedVotedLimits),
-		cnf.LockedRegisteredLimits,
-		cnf.LockedVotedLimits,
+		make(map[string]model.VoteMessage), make([]string, 0, cnf.LockedVotedLimits),
 		new(sync.Mutex),
 	}
 }
@@ -109,12 +105,12 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 	}
 
 	// === register proposal ===
-	lock.registerdProposals[string(hash)] = proposal
-	lock.registeredQueue = append(lock.registeredQueue, string(hash))
-	if len(lock.registeredQueue) >= lock.lockedLimit { // shifts Limits
+	if len(lock.registeredQueue) >= cap(lock.registeredQueue) { // shifts Limits
 		delete(lock.registerdProposals, lock.registeredQueue[0])
 		lock.registeredQueue = lock.registeredQueue[1:]
 	}
+	lock.registerdProposals[string(hash)] = proposal
+	lock.registeredQueue = append(lock.registeredQueue, string(hash))
 	// =========================
 	lock.checkAndLock(string(hash))
 	return nil
@@ -135,13 +131,13 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) error {
 	}
 
 	// === add vote ===
-	lock.findedVote[hash+pub] = vote
-	lock.votedQueue = append(lock.votedQueue, hash+pub)
-	if len(lock.votedQueue) == lock.votedLimit { // shifts Limits
+	if len(lock.votedQueue) >= cap(lock.votedQueue) { // shifts Limits
 		delete(lock.acceptedCounter, string(lock.findedVote[lock.votedQueue[0]].GetBlockHash()))
 		delete(lock.findedVote, lock.votedQueue[0])
 		lock.votedQueue = lock.votedQueue[1:]
 	}
+	lock.findedVote[hash+pub] = vote
+	lock.votedQueue = append(lock.votedQueue, hash+pub)
 	lock.acceptedCounter[hash]++
 	// ================
 

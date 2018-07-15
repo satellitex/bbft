@@ -29,9 +29,9 @@ service ConsensusGate {
      * ProposalTransaction には自身の署名をつける。
      *
      * InvalidArgument (code = 3) : One of following conditions:
-     *  3 ) 署名が異なる場合
+     *  1 ) StatelessValidator で落ちる場合
      * AlreadyExist (code = 6) : One of following conditions:
-     *  1 ) 既に同じ Block を受け取っていた場合
+     *  1 ) 既に同じ Transaction を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) 署名の主がPeerでない場合
      * ResourceExhausted (code = 8) : One of following conditions:
@@ -44,14 +44,11 @@ service ConsensusGate {
      * 言い換えると、リーダーに選ばれた Peer が自分以外の Height+1 の Block を送信する。
      *
      * InvalidArgument (code = 3) : One of following conditions:
-     *  1 ) Height が異なる場合
-     *  2 ) CreatedTime がRoundが示す時間より前だった場合、また次のRoundが示す時間以降だった場合
-     *  3 ) CreatedTime が現在時刻より後だった場合
-     *  4 ) 署名が異なる場合
+     *  1 ) Block が StatelessValidator で落ちる場合
+     * AlreadyExist (code = 6) : One of following conditions:
+     *  1 ) 既に同じ Block を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) 署名の主が現在のRoundのリーダーでない場合
-     * FailedPrecondition (code = 9) : One of following conditions:
-     *  1 ) 既に同じ Block を受け取っていた場合
      **/
     rpc Propose (Proposal) returns (ConsensusResponse);
 

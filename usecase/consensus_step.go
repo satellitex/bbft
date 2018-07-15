@@ -54,7 +54,7 @@ func (c *ConsensusStepUsecase) PreCommit() error {
 }
 
 func (c *ConsensusStepUsecase) Commit() error {
-	proposal, ok := c.lock.GetLockedProposal()
+	proposal, ok := c.lock.GetLockedProposal(0)
 	if !ok {
 		return errors.Wrapf(ErrConsensusCommit,
 			"Not Founbd Locked Proposal")

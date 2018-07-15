@@ -8,10 +8,12 @@ import (
 )
 
 var (
-	ErrStatefulValidate  = errors.Errorf("Failed StatefulValidate")
-	ErrStatelessValidate = errors.Errorf("Failed StatelessValidate")
+	ErrStatefulValidate  = errors.New("Failed StatefulValidate")
+	ErrStatelessValidate = errors.New("Failed StatelessValidate")
 
-	ErrStatefulValidateAlreadyExistTx = errors.Errorf("Failed Already Exist Transaction")
+	ErrStatefulValidateAlreadyExistTx = errors.New("Failed Already Exist Transaction")
+
+	ErrInvalidProposalRound = errors.New("Failed Invalid Proposal Round")
 )
 
 type StatefulValidator struct {

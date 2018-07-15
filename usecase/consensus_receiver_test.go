@@ -8,22 +8,24 @@ import (
 	. "github.com/satellitex/bbft/test_utils"
 	. "github.com/satellitex/bbft/usecase"
 	"github.com/stretchr/testify/assert"
-	"testing"
 	"sync"
+	"testing"
 )
 
-func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, dba.Lock, model.ConsensusSender, ConsensusReceiver) {
+func NewTestConsensusReceiverUsecase() (dba.ProposalTxQueue, dba.PeerService, dba.Lock, dba.BlockChain, model.ConsensusSender, ConsensusReceiver) {
 	testConfig := GetTestConfig()
 	queue := dba.NewProposalTxQueueOnMemory(testConfig)
 	ps := dba.NewPeerServiceOnMemory()
 	lock := dba.NewLockOnMemory(ps, testConfig)
 	pool := dba.NewReceiverPoolOnMemory(testConfig)
+	bc := dba.NewBlockChainOnMemory()
+	slv := convertor.NewStatelessValidator()
 	sender := convertor.NewMockConsensusSender()
-	return queue, ps, lock, sender, NewConsensusReceiverUsecase(queue, lock, pool, sender)
+	return queue, ps, lock, bc, sender, NewConsensusReceiverUsecase(queue, lock, pool, bc, slv, sender)
 }
 
 func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
-	queue, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	queue, _, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
 	t.Run("success case", func(t *testing.T) {
 		tx := RandomValidTx(t)
 		err := receiver.Propagate(tx)
@@ -33,12 +35,12 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 
 	t.Run("failed case input nil", func(t *testing.T) {
 		err := receiver.Propagate(nil)
-		assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
+		assert.EqualError(t, errors.Cause(err), model.ErrStatelessTxValidate.Error())
 	})
 
 	t.Run("failed case unverify tx", func(t *testing.T) {
 		err := receiver.Propagate(RandomInvalidTx(t))
-		assert.EqualError(t, errors.Cause(err), model.ErrTransactionGetHash.Error())
+		assert.EqualError(t, errors.Cause(err), model.ErrStatelessTxValidate.Error())
 	})
 
 	t.Run("failed case already exist tx", func(t *testing.T) {
@@ -78,9 +80,9 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 }
 
 func TestConsensusReceieverUsecase_Propose(t *testing.T) {
-	_, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	_, _, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
 	t.Run("success case", func(t *testing.T) {
-		proposal := RandomProposalWithRound(t, 0)
+		proposal := RandomProposalWithHeightRound(t, 0,0)
 		err := receiver.Propose(proposal)
 		assert.NoError(t, err)
 		assert.Equal(t, proposal, sender.(*convertor.MockConsensusSender).Proposal)
@@ -93,7 +95,7 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 }
 
 func TestConsensusReceieverUsecase_Vote(t *testing.T) {
-	_, ps, _, sender, receiver := NewTestConsensusReceiverUsecase()
+	_, ps, _, _, sender, receiver := NewTestConsensusReceiverUsecase()
 	peers := []model.Peer{
 		RandomPeerWithPriv(),
 		RandomPeerWithPriv(),

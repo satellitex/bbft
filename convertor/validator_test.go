@@ -91,5 +91,4 @@ func TestStatelessValidator_Validate(t *testing.T) {
 		err := slv.TxValidate(RandomInvalidTx(t))
 		assert.EqualError(t, errors.Cause(err), model.ErrTransactionVerify.Error())
 	})
-
 }

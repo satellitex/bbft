@@ -2,6 +2,7 @@ package dba_test
 
 import (
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/convertor"
 	. "github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
@@ -27,15 +28,25 @@ func testLock_RegisterProposal(t *testing.T, lock Lock) {
 		err := lock.RegisterProposal(proposal)
 		assert.EqualError(t, errors.Cause(err), model.ErrBlockGetHash.Error())
 	})
+
+	t.Run("No Memory over flow, when RegisterProposal Attack", func(t *testing.T) {
+		t.Skipf("This test is too long")
+		for i := 0; i < 1000000; i++ {
+			go func() {
+				err := lock.RegisterProposal(RandomProposal(t))
+				assert.NoError(t, err)
+			}()
+		}
+	})
 }
 
 func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService) {
 	// 4 peer
 	peers := []model.Peer{
-		RandomPeerWithPriv(),
-		RandomPeerWithPriv(),
-		RandomPeerWithPriv(),
-		RandomPeerWithPriv(),
+		RandomPeer(),
+		RandomPeer(),
+		RandomPeer(),
+		RandomPeer(),
 	}
 	for _, peer := range peers {
 		p.AddPeer(peer)
@@ -52,7 +63,7 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 	}
 
 	t.Run("success valid votes", func(t *testing.T) {
-		vote := RandomVoteMesssageFromPeer(t, peers[0])
+		vote := RandomVoteMessage(t)
 		in, err := lock.AddVoteMessage(vote)
 		assert.NoError(t, err)
 		assert.False(t, in)
@@ -66,7 +77,6 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 
 		validGetLockedProposal(t, nil)
 	})
-
 
 	// register valid proposal
 	validProposals := []model.Proposal{
@@ -134,20 +144,48 @@ func testLock_AddVoteMessageAndGetLocked(t *testing.T, lock Lock, p PeerService)
 		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, vp.GetBlock()))
 		ValidSign(t, vote)
 		in, err := lock.AddVoteMessage(vote)
-		assert.EqualError(t, errors.Cause(err), ErrSetLockedProposal.Error())
+		assert.EqualError(t, errors.Cause(err), ErrValidLockedProposal.Error())
 		assert.False(t, in)
 
 		validGetLockedProposal(t, validProposals[1])
 	})
+
+	t.Run("failed alrady exist voteMessage", func(t *testing.T) {
+		vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, RandomBlock(t)))
+		ValidSign(t, vote)
+
+		in, err := lock.AddVoteMessage(vote)
+		assert.NoError(t, err)
+		assert.False(t, in)
+
+		in, err = lock.AddVoteMessage(vote)
+		assert.EqualError(t, errors.Cause(err), ErrAlreadyAddVoteMessage.Error())
+		assert.False(t, in)
+	})
+
+	t.Run("No Memory over flow, when AddVote Attack", func(t *testing.T) {
+		t.Skip("This test is too long")
+		for i := 0; i < 1000000; i++ {
+			go func() {
+				vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, RandomBlock(t)))
+				ValidSign(t, vote)
+
+				in, err := lock.AddVoteMessage(vote)
+				require.NoError(t, err)
+				require.False(t, in)
+			}()
+		}
+	})
+
 }
 
 func TestLockOnMemory_RegisterProposal(t *testing.T) {
-	lock := NewLockOnMemory(NewPeerServiceOnMemory())
+	lock := NewLockOnMemory(NewPeerServiceOnMemory(), config.GetTestConfig())
 	testLock_RegisterProposal(t, lock)
 }
 
 func TestLockOnMemory_AddVoteMessageAndGetLocked(t *testing.T) {
 	ps := NewPeerServiceOnMemory()
-	lock := NewLockOnMemory(ps)
+	lock := NewLockOnMemory(ps, config.GetTestConfig())
 	testLock_AddVoteMessageAndGetLocked(t, lock, ps)
 }

@@ -30,13 +30,12 @@ type LockOnMemory struct {
 }
 
 var (
-	ErrSetLockedProposal     = errors.Errorf("Failed SetLocked Proposal")
 	ErrValidInPeerService    = errors.Errorf("Failed Valid In PeerService")
 	ErrValidLockedProposal   = errors.Errorf("Failed Valid Locked Proposal")
 	ErrAlreadyAddVoteMessage = errors.Errorf("Failed Alrady add same VoteMessage")
 )
 
-func NewLockOnMemory(peerService PeerService, cnf config.BBFTConfig) Lock {
+func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
 	return &LockOnMemory{
 		peerService,
 		nil,
@@ -102,6 +101,7 @@ func (lock *LockOnMemory) RegisterProposal(proposal model.Proposal) error {
 	lock.registerdProposals[string(hash)] = proposal
 	lock.registeredQueue = append(lock.registeredQueue, string(hash))
 	if len(lock.registeredQueue) >= lock.lockedLimit {
+		delete(lock.registerdProposals, lock.registeredQueue[0])
 		lock.registeredQueue = lock.registeredQueue[1:]
 	}
 	// ===
@@ -116,9 +116,9 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
 		return false, errors.Wrapf(model.ErrInvalidVoteMessage, "VoteMessage is nil")
 	}
 
-	if ok := validInPeerService(vote, lock.peerService); ok {
-		return false, errors.Wrapf(ErrValidInPeerService, "PeerService doesn't have pubkey: %x", vote.GetSignature().GetPubkey())
-	}
+	//if ok := validInPeerService(vote, lock.peerService); ok {
+	//	return false, errors.Wrapf(ErrValidInPeerService, "PeerService doesn't have pubkey: %x", vote.GetSignature().GetPubkey())
+	//}
 
 	hash := string(vote.GetBlockHash())
 	pub := string(vote.GetSignature().GetPubkey())
@@ -130,13 +130,14 @@ func (lock *LockOnMemory) AddVoteMessage(vote model.VoteMessage) (bool, error) {
 	lock.findedVote[hash+pub] = vote
 	lock.votedQueue = append(lock.votedQueue, hash+pub)
 	if len(lock.votedQueue) == lock.votedLimit { // shits Limits
+		delete(lock.acceptedCounter, string(lock.findedVote[lock.votedQueue[0]].GetBlockHash()))
+		delete(lock.findedVote, lock.votedQueue[0])
 		lock.votedQueue = lock.votedQueue[1:]
 	}
-	acceptedCounter := lock.acceptedCounter[hash]
-	acceptedCounter++
+	lock.acceptedCounter[hash]++
 	// ===
 
-	if getRequiredAccepet(lock.peerService) >= acceptedCounter {
+	if getRequiredAccepet(lock.peerService) <= lock.acceptedCounter[hash] {
 		proposal := lock.registerdProposals[hash]
 		if ok, err := validLockedProposal(proposal, lock.lockedProposal); ok {
 			lock.lockedProposal = proposal

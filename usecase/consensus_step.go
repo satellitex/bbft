@@ -68,7 +68,7 @@ type PreCommitFinder struct {
 	ps            dba.PeerService
 }
 
-func NewPreCommitFinder(ps dba.PeerService, conf config.BBFTConfig) *PreCommitFinder {
+func NewPreCommitFinder(ps dba.PeerService, conf *config.BBFTConfig) *PreCommitFinder {
 	return &PreCommitFinder{
 		nil,
 		make(map[string]int),

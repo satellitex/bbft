@@ -24,6 +24,7 @@ func GetTestConfig() *config.BBFTConfig {
 		testConfig.ReceiveProposeProposalPoolLimits = 100
 		testConfig.ReceiveVoteVoteMessagePoolLimits = 100
 		testConfig.ReceivePreCommitVoteMessagePoolLimits = 100
+		testConfig.PreCommitFinderLimits = 100
 	}
 	return testConfig
 }

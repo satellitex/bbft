@@ -1,11 +1,11 @@
 package usecase
 
 import (
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
+	"math"
 )
 
 type ConsensusStep interface {

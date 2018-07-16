@@ -15,6 +15,7 @@ type BBFTConfig struct {
 	ReceiveProposeProposalPoolLimits      int
 	ReceiveVoteVoteMessagePoolLimits      int
 	ReceivePreCommitVoteMessagePoolLimits int
+	PreCommitFinderLimits                 int
 }
 
 var config BBFTConfig

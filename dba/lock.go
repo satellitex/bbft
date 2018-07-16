@@ -60,14 +60,6 @@ func NewLockOnMemory(peerService PeerService, cnf *config.BBFTConfig) Lock {
 	}
 }
 
-func getAllowFailed(ps PeerService) int {
-	return (ps.Size() - 1) / 3
-}
-
-func getRequiredAccepet(ps PeerService) int {
-	return getAllowFailed(ps)*2 + 1
-}
-
 func validLockedProposal(proposal model.Proposal, lockedProposal model.Proposal) bool {
 	if proposal == nil {
 		return false
@@ -85,7 +77,7 @@ func validLockedProposal(proposal model.Proposal, lockedProposal model.Proposal)
 func (lock *LockOnMemory) checkAndLock(hash string) {
 	if proposal, ok := lock.registerdProposals[hash]; ok {
 		height := proposal.GetBlock().GetHeader().GetHeight()
-		if getRequiredAccepet(lock.peerService) <= lock.acceptedCounter[hash] {
+		if lock.peerService.GetNumberOfRequiredAcceptPeers() <= lock.acceptedCounter[hash] {
 			if ok := validLockedProposal(proposal, lock.lockedProposal[height]); ok {
 				lock.lockedProposal[height] = proposal
 			}

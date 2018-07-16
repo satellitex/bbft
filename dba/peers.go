@@ -8,6 +8,8 @@ type PeerService interface {
 	GetPeer(pubkey []byte) (model.Peer, bool)
 	GetPeerFromAddress(address string) (model.Peer, bool)
 	GetPeers() []model.Peer
+	GetNumberOfAllowedFailedPeers() int
+	GetNumberOfRequiredAcceptPeers() int
 }
 
 type PeerServiceOnMemory struct {
@@ -53,4 +55,12 @@ func (p *PeerServiceOnMemory) GetPeers() []model.Peer {
 		ret = append(ret, peer)
 	}
 	return ret
+}
+
+func (p *PeerServiceOnMemory) GetNumberOfAllowedFailedPeers() int {
+	return (p.Size() - 1) / 3
+}
+
+func (p *PeerServiceOnMemory) GetNumberOfRequiredAcceptPeers() int {
+	return p.GetNumberOfAllowedFailedPeers()*2 + 1
 }

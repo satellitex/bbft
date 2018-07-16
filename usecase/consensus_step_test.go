@@ -80,7 +80,7 @@ func TestPreCommitFinder(t *testing.T) {
 	})
 
 	t.Run("many set", func(t *testing.T) {
-		for i := 0; i < conf.PreCommitFinderLimits; i++ {
+		for i := 0; i < conf.PreCommitFinderLimits*2; i++ {
 			err := finder.Set(RandomVoteMessage(t))
 			assert.NoError(t, err)
 		}

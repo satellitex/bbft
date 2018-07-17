@@ -135,12 +135,31 @@ type ConsensusStepUsecase struct {
 
 	proposalFinder    *ProposalFinder
 	preCommitFinder   *PreCommitFinder
-	thisRoundProposal model.Proposal
-	roundStartTime    time.Duration
-	roundCommitTime   time.Duration
-	proposeTimeOut    time.Duration
-	voteStartTimeOut  time.Duration
-	preCommitTimeOut  time.Duration
+	ThisRoundProposal model.Proposal
+	RoundStartTime    time.Duration
+	RoundCommitTime   time.Duration
+	ProposeTimeOut    time.Duration
+	VoteStartTimeOut  time.Duration
+	PreCommitTimeOut  time.Duration
+}
+
+func NewConsensusStepUsecase(conf *config.BBFTConfig, bc dba.BlockChain, ps dba.PeerService, lock dba.Lock,
+	queue dba.ProposalTxQueue, sender model.ConsensusSender, slv model.StatelessValidator, sfv model.StatefulValidator,
+	factory model.ModelFactory, channel *ReceiveChannel) ConsensusStep {
+	return &ConsensusStepUsecase{
+		conf:            conf,
+		bc:              bc,
+		ps:              ps,
+		lock:            lock,
+		queue:           queue,
+		sender:          sender,
+		slv:             slv,
+		sfv:             sfv,
+		factory:         factory,
+		channel:         channel,
+		proposalFinder:  NewProposalFinder(),
+		preCommitFinder: NewPreCommitFinder(ps, conf),
+	}
 }
 
 var (
@@ -157,16 +176,16 @@ func (c *ConsensusStepUsecase) Run() {
 		if !ok {
 			panic("Unexpected Error No BlockChain Top")
 		}
-		c.roundStartTime = time.Duration(top.GetHeader().GetCommitTime())
+		c.RoundStartTime = time.Duration(top.GetHeader().GetCommitTime())
 		height, round := top.GetHeader().GetHeight(), int32(-1)
 		for {
 			round++
 
 			// each Phase TimeOut Calc
-			c.proposeTimeOut = c.roundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
-			c.voteStartTimeOut = c.proposeTimeOut + c.conf.VoteMaxCalcTime + c.conf.AllowedConnectDelayTime
-			c.preCommitTimeOut = c.voteStartTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
-			c.roundCommitTime = c.preCommitTimeOut + c.conf.CommitMaxCalcTime
+			c.ProposeTimeOut = c.RoundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.VoteStartTimeOut = c.ProposeTimeOut + c.conf.VoteMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.PreCommitTimeOut = c.VoteStartTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
 
 			if err := c.Propose(height, round); err != nil {
 				fmt.Printf("Consensus ProposePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
@@ -181,36 +200,12 @@ func (c *ConsensusStepUsecase) Run() {
 			} else {
 				break
 			}
-			c.roundStartTime = c.preCommitTimeOut
+			c.RoundStartTime = c.PreCommitTimeOut
 		}
 		c.Commit(height, round)
 	}
 }
 
-/*
-  if Lock.emtpy():
-    if Leader is me:
-      N <- number of transactions to take out.
-      cnt <- 0
-      for tx in ProposalTxQueue:
-        if validate(tx):
-          Block.Transactions <- tx
-          cnt ++
-        if N <= cnt:
-          break
-      Block.Header.Height <- BlockChain.Top.Header.Height
-      Block.Header.Hash <- BlockChain.Top.Hash
-      Block.Header.CreatedTime <- now
-      Block.Signature <- sign( sum_hash(hash(Block.Header),hash(sum_hash(Block.Transactions))), myself.privateKey )
-      Proposal[Round].Block <- Block
-      Proposal[Round].Round <- Round
-      send_all_peers( Propose, Proposal[Round] )
-      Vote( Height, Round )
-    else:
-      wait until receiveProposal(Round=Round) or ProposeTimeOut or not Lock.empty()
-      Proposal[Round] <- receivedProposal(Round=Round)
-  Vote( Height, Round )
-*/
 func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
@@ -230,37 +225,41 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 			if !ok {
 				return errors.New("Unexpected Error No BlockChain Top")
 			}
-			block, err := c.factory.NewBlock(height, model.MustGetHash(top), int64(c.roundCommitTime), txs)
+			block, err := c.factory.NewBlock(height, model.MustGetHash(top), int64(c.RoundCommitTime), txs)
 			if err != nil {
 				return err
 			}
 			block.Sign(c.conf.PublicKey, c.conf.SecretKey)
-			propsal, err := c.factory.NewProposal(block, round)
+			proposal, err := c.factory.NewProposal(block, round)
 			if err != nil {
 				return err
 			}
 
-			if err = c.sender.Propose(propsal); err != nil {
+			c.ThisRoundProposal = proposal
+			if err = c.sender.Propose(proposal); err != nil {
 				return err
 			}
 		} else {
 			// Leader is not me
-			timer := time.NewTimer(c.proposeTimeOut - time.Duration(Now()))
-			select {
-			case <-timer.C:
-				break
-			case proposal := <-c.channel.Propose:
-				c.proposalFinder.Set(proposal)
-				if c.thisRoundProposal, ok = c.proposalFinder.Find(height, round); ok {
-					break
+			timer := time.NewTimer(c.ProposeTimeOut - time.Duration(Now()))
+			for {
+				select {
+				case <-timer.C:
+					goto proposeEnd
+				case proposal := <-c.channel.Propose:
+					c.proposalFinder.Set(proposal)
+					if c.ThisRoundProposal, ok = c.proposalFinder.Find(height, round); ok {
+						goto proposeEnd
+					}
+				case <-c.channel.Vote:
+					if _, ok := c.lock.GetLockedProposal(height); ok {
+						goto proposeEnd
+					}
+				case preCommit := <-c.channel.PreCommit:
+					c.preCommitFinder.Set(preCommit)
 				}
-			case <-c.channel.Vote:
-				if _, ok := c.lock.GetLockedProposal(height); ok {
-					break
-				}
-			case preCommit := <-c.channel.PreCommit:
-				c.preCommitFinder.Set(preCommit)
 			}
+		proposeEnd:
 		}
 	}
 	return nil

@@ -1,6 +1,7 @@
 package test_utils
 
 import (
+	"github.com/kelseyhightower/envconfig"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/convertor"
 	"os"
@@ -8,6 +9,8 @@ import (
 
 func GetTestConfig() *config.BBFTConfig {
 	testConfig := config.GetConfig()
+
+	envconfig.MustProcess("bbft", testConfig)
 
 	validPub, validPriv := convertor.NewKeyPair()
 	testConfig.PublicKey = validPub

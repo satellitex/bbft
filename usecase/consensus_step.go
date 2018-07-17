@@ -1,18 +1,22 @@
 package usecase
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"math"
+	"time"
 )
 
 type ConsensusStep interface {
 	Run()
-	Propose() error
-	Vote() error
-	PreCommit() error
+	Propose(height int64, round int32) error
+	Vote(height int64, round int32) error
+	PreCommit(height int64, round int32) error
+	Commit(height int64, round int32) error
 }
 
 // [Height][Round] = Proposal を管理するgi
@@ -109,15 +113,34 @@ func (f *PreCommitFinder) Set(vote model.VoteMessage) error {
 	return nil
 }
 
+func UnixTime(t time.Time) int64 {
+	return t.UnixNano()
+}
+
+func Now() int64 {
+	return UnixTime(time.Now())
+}
+
 type ConsensusStepUsecase struct {
-	bc                 dba.BlockChain
-	lock               dba.Lock
-	queue              dba.ProposalTxQueue
-	sender             model.ConsensusSender
-	statelessValidator model.StatelessValidator
-	statefulValidator  model.StatefulValidator
-	channel            *ReceiveChannel
-	factory            model.ModelFactory
+	conf    *config.BBFTConfig
+	bc      dba.BlockChain
+	ps      dba.PeerService
+	lock    dba.Lock
+	queue   dba.ProposalTxQueue
+	sender  model.ConsensusSender
+	slv     model.StatelessValidator
+	sfv     model.StatefulValidator
+	factory model.ModelFactory
+	channel *ReceiveChannel
+
+	proposalFinder    *ProposalFinder
+	preCommitFinder   *PreCommitFinder
+	thisRoundProposal model.Proposal
+	roundStartTime    time.Duration
+	roundCommitTime   time.Duration
+	proposeTimeOut    time.Duration
+	voteStartTimeOut  time.Duration
+	preCommitTimeOut  time.Duration
 }
 
 var (
@@ -127,30 +150,131 @@ var (
 	ErrConsensusCommit    = errors.Errorf("Failed This peer ConsensusCommit")
 )
 
+// Runnning Consensus Endless...
 func (c *ConsensusStepUsecase) Run() {
 	for {
-		for {
-			c.Propose()
-			c.Vote()
-			c.PreCommit()
+		top, ok := c.bc.Top()
+		if !ok {
+			panic("Unexpected Error No BlockChain Top")
 		}
-		c.Commit()
+		c.roundStartTime = time.Duration(top.GetHeader().GetCommitTime())
+		height, round := top.GetHeader().GetHeight(), int32(-1)
+		for {
+			round++
+
+			// each Phase TimeOut Calc
+			c.proposeTimeOut = c.roundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.voteStartTimeOut = c.proposeTimeOut + c.conf.VoteMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.preCommitTimeOut = c.voteStartTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.roundCommitTime = c.preCommitTimeOut + c.conf.CommitMaxCalcTime
+
+			if err := c.Propose(height, round); err != nil {
+				fmt.Printf("Consensus ProposePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			}
+
+			if err := c.Vote(height, round); err != nil {
+				fmt.Printf("Consensus VotePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			}
+
+			if err := c.PreCommit(height, round); err != nil {
+				fmt.Printf("Consensus VotePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			} else {
+				break
+			}
+			c.roundStartTime = c.preCommitTimeOut
+		}
+		c.Commit(height, round)
 	}
 }
 
-func (c *ConsensusStepUsecase) Propose() error {
+/*
+  if Lock.emtpy():
+    if Leader is me:
+      N <- number of transactions to take out.
+      cnt <- 0
+      for tx in ProposalTxQueue:
+        if validate(tx):
+          Block.Transactions <- tx
+          cnt ++
+        if N <= cnt:
+          break
+      Block.Header.Height <- BlockChain.Top.Header.Height
+      Block.Header.Hash <- BlockChain.Top.Hash
+      Block.Header.CreatedTime <- now
+      Block.Signature <- sign( sum_hash(hash(Block.Header),hash(sum_hash(Block.Transactions))), myself.privateKey )
+      Proposal[Round].Block <- Block
+      Proposal[Round].Round <- Round
+      send_all_peers( Propose, Proposal[Round] )
+      Vote( Height, Round )
+    else:
+      wait until receiveProposal(Round=Round) or ProposeTimeOut or not Lock.empty()
+      Proposal[Round] <- receivedProposal(Round=Round)
+  Vote( Height, Round )
+*/
+func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
+	if _, ok := c.lock.GetLockedProposal(height); !ok {
+		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
+			// Leader is me
+			txs := make([]model.Transaction, 0, c.conf.NumberOfBlockHasTransactions)
+			for len(txs) < c.conf.NumberOfBlockHasTransactions {
+				tx, ok := c.queue.Pop()
+				if !ok { // ProposalTx is empty
+					break
+				}
+				if err := c.slv.TxValidate(tx); err != nil {
+					continue
+				}
+				txs = append(txs, tx)
+			}
+			top, ok := c.bc.Top()
+			if !ok {
+				return errors.New("Unexpected Error No BlockChain Top")
+			}
+			block, err := c.factory.NewBlock(height, model.MustGetHash(top), int64(c.roundCommitTime), txs)
+			if err != nil {
+				return err
+			}
+			block.Sign(c.conf.PublicKey, c.conf.SecretKey)
+			propsal, err := c.factory.NewProposal(block, round)
+			if err != nil {
+				return err
+			}
+
+			if err = c.sender.Propose(propsal); err != nil {
+				return err
+			}
+		} else {
+			// Leader is not me
+			timer := time.NewTimer(c.proposeTimeOut - time.Duration(Now()))
+			select {
+			case <-timer.C:
+				break
+			case proposal := <-c.channel.Propose:
+				c.proposalFinder.Set(proposal)
+				if c.thisRoundProposal, ok = c.proposalFinder.Find(height, round); ok {
+					break
+				}
+			case <-c.channel.Vote:
+				if _, ok := c.lock.GetLockedProposal(height); ok {
+					break
+				}
+			case preCommit := <-c.channel.PreCommit:
+				c.preCommitFinder.Set(preCommit)
+			}
+		}
+	}
 	return nil
 }
 
-func (c *ConsensusStepUsecase) Vote() error {
+func (c *ConsensusStepUsecase) Vote(height int64, round int32) error {
 	return nil
 }
 
-func (c *ConsensusStepUsecase) PreCommit() error {
+func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 	return nil
 }
 
-func (c *ConsensusStepUsecase) Commit() error {
+func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 	proposal, ok := c.lock.GetLockedProposal(0)
 	if !ok {
 		return errors.Wrapf(ErrConsensusCommit,

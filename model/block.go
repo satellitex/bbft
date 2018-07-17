@@ -27,6 +27,7 @@ type BlockHeader interface {
 	GetHeight() int64
 	GetPreBlockHash() []byte
 	GetCreatedTime() int64
+	GetCommitTime() int64
 	GetHash() ([]byte, error)
 }
 

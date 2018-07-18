@@ -361,3 +361,33 @@ func TestConsensusStepUsecase_PreCommit(t *testing.T) {
 		}
 	})
 }
+
+func TestConsensusStepUsecase_Commit(t *testing.T) {
+	_, bc, ps, lock, _, _, _, c := NewTestConsensusStepUsecase(t)
+	factory := convertor.NewModelFactory()
+
+	_, ok := bc.Top()
+	require.True(t, ok)
+
+	var height int64 = 1
+
+	t.Run("success, commit!", func(t *testing.T) {
+		proposal, err := factory.NewProposal(RandomCommitableBlock(t, bc), 0)
+		require.NoError(t, err)
+
+		lock.RegisterProposal(proposal)
+		for _, p := range ps.GetPeers()[1:] {
+			vote := RandomVoteMessageFromPeerWithBlock(t, p, proposal.GetBlock())
+			require.NoError(t, lock.AddVoteMessage(vote))
+		}
+
+		assert.NoError(t, c.Commit(height, 0))
+		newBlock, ok := bc.Top()
+		require.True(t, ok)
+		assert.Equal(t, proposal.GetBlock(), newBlock)
+	})
+
+	t.Run("invalid commit case", func(t *testing.T) {
+		assert.Error(t, errors.Cause(c.Commit(height, 0)), ErrConsensusCommit.Error())
+	})
+}

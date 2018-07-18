@@ -314,7 +314,7 @@ func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 	for {
 		select {
 		case <-timer.C:
-			return errors.Errorf("This Round Can't collect 2/3+ preCommits, so try to next Round: %d -> %d", round, round+1)
+			return errors.Wrapf(ErrConsensusPreCommit, "This Round Can't collect 2/3+ preCommits, so try to next Round: %d -> %d", round, round+1)
 		case propose := <-c.channel.Propose:
 			c.proposalFinder.Set(propose)
 		case <-c.channel.Vote:

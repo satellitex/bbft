@@ -13,6 +13,7 @@ import (
 	. "github.com/satellitex/bbft/usecase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sync"
 	"time"
 )
 
@@ -147,6 +148,15 @@ func NewTestConsensusStepUsecase(t *testing.T) (*config.BBFTConfig, dba.BlockCha
 	return conf, bc, ps, lock, queue, sender, channel, consensusStep
 }
 
+func mySelfId(conf *config.BBFTConfig, ps dba.PeerService, height int64) int32 {
+	for id, p := range ps.GetPermutationPeers(height) {
+		if bytes.Equal(p.GetPubkey(), conf.PublicKey) {
+			return int32(id)
+		}
+	}
+	return 0
+}
+
 func TestConsensusStepUsecase_Propose(t *testing.T) {
 	conf, bc, ps, lock, queue, sender, channel, c := NewTestConsensusStepUsecase(t)
 	factory := convertor.NewModelFactory()
@@ -157,14 +167,7 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 	var height int64 = 1
 
 	// myselfId is Round when myself is Leader
-	myselfId := func() int32 {
-		for id, p := range ps.GetPermutationPeers(height) {
-			if bytes.Equal(p.GetPubkey(), conf.PublicKey) {
-				return int32(id)
-			}
-		}
-		return 0
-	}()
+	myselfId := mySelfId(conf, ps, height)
 
 	t.Run("leader case", func(t *testing.T) {
 		validTx := RandomValidTx(t)
@@ -246,6 +249,9 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 
 	var height int64 = 1
 
+	// myselfId is Round when myself is Leader
+	myselfId := mySelfId(conf, ps, height)
+
 	t.Run("normal case, voteTimeOut", func(t *testing.T) {
 		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
 
@@ -258,6 +264,8 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 	})
 
 	t.Run("normal case, validate proposal and sendVote", func(t *testing.T) {
+		waiter := &sync.WaitGroup{}
+		waiter.Add(1)
 		validProposal, err := factory.NewProposal(RandomCommitableBlock(t, bc), 0)
 		require.NoError(t, err)
 
@@ -274,8 +282,9 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 			assert.Equal(t, validProposal, actual)
 
 			actualVote := sender.(*convertor.MockConsensusSender).VoteMessage
-			expectedVote := RandomVoteMessageFromPeerWithBlock(t, ps.GetPermutationPeers(height)[0], validProposal.GetBlock())
+			expectedVote := RandomVoteMessageFromPeerWithBlock(t, ps.GetPermutationPeers(height)[myselfId], validProposal.GetBlock())
 			assert.Equal(t, expectedVote, actualVote)
+			waiter.Done()
 		}()
 		for _, p := range ps.GetPeers()[1:] {
 			vote := RandomVoteMessageFromPeerWithBlock(t, p, validProposal.GetBlock())
@@ -286,6 +295,7 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 		actualProposal, ok := lock.GetLockedProposal(height)
 		require.True(t, ok)
 		require.Equal(t, validProposal, actualProposal)
+		waiter.Wait()
 	})
 
 	t.Run("normal case, if has lock, no wait voteTimeOut", func(t *testing.T) {
@@ -301,5 +311,53 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 }
 
 func TestConsensusStepUsecase_PreCommit(t *testing.T) {
+	conf, bc, ps, lock, _, sender, channel, c := NewTestConsensusStepUsecase(t)
+	factory := convertor.NewModelFactory()
 
+	_, ok := bc.Top()
+	require.True(t, ok)
+
+	var height int64 = 1
+	// myselfId is Round when myself is Leader
+	myselfId := mySelfId(conf, ps, height)
+
+	t.Run("invalid case, preCommitTimeOut", func(t *testing.T) {
+		c.(*ConsensusStepUsecase).PreCommitTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
+
+		startTime := Now()
+		err := c.PreCommit(height, 0)
+		endTime := Now()
+		assert.EqualError(t, errors.Cause(err), ErrConsensusPreCommit.Error())
+		assert.True(t, TimeParseDuration(t, "200ms") < time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+		assert.True(t, TimeParseDuration(t, "210ms") > time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+	})
+
+	t.Run("normal case, sendPreCommit and collected preCommit", func(t *testing.T) {
+		proposal, err := factory.NewProposal(RandomCommitableBlock(t, bc), 0)
+		require.NoError(t, err)
+		lock.RegisterProposal(proposal)
+
+		for _, p := range ps.GetPeers()[1:] {
+			vote := RandomVoteMessageFromPeerWithBlock(t, p, proposal.GetBlock())
+			require.NoError(t, lock.AddVoteMessage(vote))
+		}
+		locked, ok := lock.GetLockedProposal(height)
+		require.True(t, ok)
+		require.Equal(t, proposal, locked)
+
+		c.(*ConsensusStepUsecase).PreCommitTimeOut = time.Duration(Now()) + conf.PreCommitMaxCalcTime + conf.AllowedConnectDelayTime
+
+		go func() {
+			err := c.PreCommit(height, 0)
+			assert.NoError(t, err)
+
+			expectedPreCommit := RandomVoteMessageFromPeerWithBlock(t, ps.GetPermutationPeers(height)[myselfId], proposal.GetBlock())
+			actualPreCommit := sender.(*convertor.MockConsensusSender).PreCommitMessage
+			assert.Equal(t, expectedPreCommit, actualPreCommit)
+		}()
+		for _, p := range ps.GetPeers()[1:] {
+			vote := RandomVoteMessageFromPeerWithBlock(t, p, proposal.GetBlock())
+			channel.PreCommit <- vote
+		}
+	})
 }

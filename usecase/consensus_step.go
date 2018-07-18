@@ -19,7 +19,7 @@ type ConsensusStep interface {
 	Commit(height int64, round int32) error
 }
 
-// [Height][Round] = Proposal を管理するgi
+// [Height][Round] = Proposal を管理する
 type ProposalFinder struct {
 	field map[int64]map[int32]model.Proposal
 }

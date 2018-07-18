@@ -264,8 +264,6 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 	})
 
 	t.Run("normal case, validate proposal and sendVote", func(t *testing.T) {
-		waiter := &sync.WaitGroup{}
-		waiter.Add(1)
 		validProposal, err := factory.NewProposal(RandomCommitableBlock(t, bc), 0)
 		require.NoError(t, err)
 
@@ -273,6 +271,8 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + conf.VoteMaxCalcTime + conf.AllowedConnectDelayTime
 		lock.RegisterProposal(validProposal)
 
+		waiter := &sync.WaitGroup{}
+		waiter.Add(1)
 		go func() {
 			err := c.Vote(height, 0)
 			assert.NoError(t, err)
@@ -306,6 +306,17 @@ func TestConsensusStepUsecase_Vote(t *testing.T) {
 		endTime := Now()
 		assert.NoError(t, err)
 		assert.True(t, TimeParseDuration(t, "190ms") > time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+	})
+
+	t.Run("normal case, invalid received proposal", func(t *testing.T) {
+		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
+		sender.(*convertor.MockConsensusSender).VoteMessage = nil
+		require.Nil(t, sender.(*convertor.MockConsensusSender).VoteMessage)
+
+		c.(*ConsensusStepUsecase).ThisRoundProposal = RandomProposalWithHeightRound(t, height+1, 1)
+		err := c.Vote(height+1, 1)
+		assert.NoError(t, err)
+		assert.Nil(t, sender.(*convertor.MockConsensusSender).VoteMessage)
 	})
 
 }

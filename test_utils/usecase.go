@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 func RandomProposalWithHeightRound(t *testing.T, height int64, round int32) model.Proposal {
@@ -15,4 +16,10 @@ func RandomProposalWithHeightRound(t *testing.T, height int64, round int32) mode
 	proposal, err := convertor.NewModelFactory().NewProposal(block, round)
 	require.NoError(t, err)
 	return proposal
+}
+
+func TimeParseDuration(t *testing.T, s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	require.NoError(t, err)
+	return d
 }

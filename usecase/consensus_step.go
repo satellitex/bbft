@@ -1,21 +1,25 @@
 package usecase
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"math"
+	"time"
 )
 
 type ConsensusStep interface {
 	Run()
-	Propose() error
-	Vote() error
-	PreCommit() error
+	Propose(height int64, round int32) error
+	Vote(height int64, round int32) error
+	PreCommit(height int64, round int32) error
+	Commit(height int64, round int32) error
 }
 
-// [Height][Round] = Proposal を管理するgi
+// [Height][Round] = Proposal を管理する
 type ProposalFinder struct {
 	field map[int64]map[int32]model.Proposal
 }
@@ -109,15 +113,53 @@ func (f *PreCommitFinder) Set(vote model.VoteMessage) error {
 	return nil
 }
 
+func UnixTime(t time.Time) int64 {
+	return t.UnixNano()
+}
+
+func Now() int64 {
+	return UnixTime(time.Now())
+}
+
 type ConsensusStepUsecase struct {
-	bc                 dba.BlockChain
-	lock               dba.Lock
-	queue              dba.ProposalTxQueue
-	sender             model.ConsensusSender
-	statelessValidator model.StatelessValidator
-	statefulValidator  model.StatefulValidator
-	channel            *ReceiveChannel
-	factory            model.ModelFactory
+	conf    *config.BBFTConfig
+	bc      dba.BlockChain
+	ps      dba.PeerService
+	lock    dba.Lock
+	queue   dba.ProposalTxQueue
+	sender  model.ConsensusSender
+	slv     model.StatelessValidator
+	sfv     model.StatefulValidator
+	factory model.ModelFactory
+	channel *ReceiveChannel
+
+	proposalFinder    *ProposalFinder
+	preCommitFinder   *PreCommitFinder
+	ThisRoundProposal model.Proposal
+	RoundStartTime    time.Duration
+	RoundCommitTime   time.Duration
+	ProposeTimeOut    time.Duration
+	VoteTimeOut       time.Duration
+	PreCommitTimeOut  time.Duration
+}
+
+func NewConsensusStepUsecase(conf *config.BBFTConfig, bc dba.BlockChain, ps dba.PeerService, lock dba.Lock,
+	queue dba.ProposalTxQueue, sender model.ConsensusSender, slv model.StatelessValidator, sfv model.StatefulValidator,
+	factory model.ModelFactory, channel *ReceiveChannel) ConsensusStep {
+	return &ConsensusStepUsecase{
+		conf:            conf,
+		bc:              bc,
+		ps:              ps,
+		lock:            lock,
+		queue:           queue,
+		sender:          sender,
+		slv:             slv,
+		sfv:             sfv,
+		factory:         factory,
+		channel:         channel,
+		proposalFinder:  NewProposalFinder(),
+		preCommitFinder: NewPreCommitFinder(ps, conf),
+	}
 }
 
 var (
@@ -127,36 +169,175 @@ var (
 	ErrConsensusCommit    = errors.Errorf("Failed This peer ConsensusCommit")
 )
 
+// Runnning Consensus Endless...
 func (c *ConsensusStepUsecase) Run() {
 	for {
-		for {
-			c.Propose()
-			c.Vote()
-			c.PreCommit()
+		top, ok := c.bc.Top()
+		if !ok {
+			panic("Unexpected Error No BlockChain Top")
 		}
-		c.Commit()
+		c.RoundStartTime = time.Duration(top.GetHeader().GetCommitTime())
+		height, round := top.GetHeader().GetHeight(), int32(-1)
+		for {
+			round++
+
+			// each Phase TimeOut Calc
+			c.ProposeTimeOut = c.RoundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.VoteTimeOut = c.ProposeTimeOut + c.conf.VoteMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.PreCommitTimeOut = c.VoteTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
+			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
+
+			if err := c.Propose(height, round); err != nil {
+				fmt.Printf("Consensus ProposePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			}
+
+			if err := c.Vote(height, round); err != nil {
+				fmt.Printf("Consensus VotePhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			}
+
+			if err := c.PreCommit(height, round); err != nil {
+				fmt.Printf("Consensus PreCommitPhase Error!! height:%d, round:%d\n%s", height, round, err.Error())
+			} else {
+				break
+			}
+			c.RoundStartTime = c.PreCommitTimeOut
+		}
+		c.Commit(height, round)
 	}
 }
 
-func (c *ConsensusStepUsecase) Propose() error {
+func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
+	if _, ok := c.lock.GetLockedProposal(height); !ok {
+		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
+			// Leader is me
+			txs := make([]model.Transaction, 0, c.conf.NumberOfBlockHasTransactions)
+			for len(txs) < c.conf.NumberOfBlockHasTransactions {
+				tx, ok := c.queue.Pop()
+				if !ok { // ProposalTx is empty
+					break
+				}
+				if err := c.slv.TxValidate(tx); err != nil {
+					continue
+				}
+				txs = append(txs, tx)
+			}
+			top, ok := c.bc.Top()
+			if !ok {
+				return errors.New("Unexpected Error No BlockChain Top")
+			}
+			block, err := c.factory.NewBlock(height, model.MustGetHash(top), int64(c.RoundCommitTime), txs)
+			if err != nil {
+				return err
+			}
+			block.Sign(c.conf.PublicKey, c.conf.SecretKey)
+			proposal, err := c.factory.NewProposal(block, round)
+			if err != nil {
+				return err
+			}
+
+			c.ThisRoundProposal = proposal
+			if err = c.sender.Propose(proposal); err != nil {
+				return err
+			}
+		} else {
+			// Leader is not me
+			timer := time.NewTimer(c.ProposeTimeOut - time.Duration(Now()))
+			for {
+				select {
+				case <-timer.C:
+					goto proposeEnd
+				case proposal := <-c.channel.Propose:
+					c.proposalFinder.Set(proposal)
+					if c.ThisRoundProposal, ok = c.proposalFinder.Find(height, round); ok {
+						goto proposeEnd
+					}
+				case <-c.channel.Vote:
+					if _, ok := c.lock.GetLockedProposal(height); ok {
+						goto proposeEnd
+					}
+				case preCommit := <-c.channel.PreCommit:
+					c.preCommitFinder.Set(preCommit)
+				}
+			}
+		proposeEnd:
+		}
+	}
 	return nil
 }
 
-func (c *ConsensusStepUsecase) Vote() error {
+func (c *ConsensusStepUsecase) Vote(height int64, round int32) error {
+	if _, ok := c.lock.GetLockedProposal(height); !ok {
+		if c.ThisRoundProposal != nil {
+			if err := c.slv.BlockValidate(c.ThisRoundProposal.GetBlock()); err != nil {
+				fmt.Printf("Height: %d, Round: %d, proposal StatelessInvalid: %s", height, round, err.Error())
+			} else if err := c.sfv.Validate(c.ThisRoundProposal.GetBlock()); err != nil {
+				fmt.Printf("Height: %d, Round: %d, proposal StatefulInvalid: %s", height, round, err.Error())
+			} else {
+				vote := c.factory.NewVoteMessage(model.MustGetHash(c.ThisRoundProposal.GetBlock()))
+				vote.Sign(c.conf.PublicKey, c.conf.SecretKey)
+				if err := c.sender.Vote(vote); err != nil {
+					return err
+				}
+			}
+		}
+		timer := time.NewTimer(c.VoteTimeOut - time.Duration(Now()))
+		for {
+			select {
+			case <-timer.C:
+				goto voteEnd
+			case proposal := <-c.channel.Propose:
+				c.proposalFinder.Set(proposal)
+			case <-c.channel.Vote:
+				if proposal, ok := c.lock.GetLockedProposal(height); ok {
+					if proposal.GetRound() == round {
+						goto voteEnd
+					}
+				}
+			case preCommit := <-c.channel.PreCommit:
+				c.preCommitFinder.Set(preCommit)
+			}
+		}
+	voteEnd:
+	}
 	return nil
 }
 
-func (c *ConsensusStepUsecase) PreCommit() error {
-	return nil
+func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
+	if proposal, ok := c.lock.GetLockedProposal(height); ok {
+		vote := c.factory.NewVoteMessage(model.MustGetHash(proposal.GetBlock()))
+		vote.Sign(c.conf.PublicKey, c.conf.SecretKey)
+		if err := c.sender.PreCommit(vote); err != nil {
+			return err
+		}
+	}
+	timer := time.NewTimer(c.PreCommitTimeOut - time.Duration(Now()))
+	for {
+		select {
+		case <-timer.C:
+			return errors.Wrapf(ErrConsensusPreCommit, "This Round Can't collect 2/3+ preCommits, so try to next Round: %d -> %d", round, round+1)
+		case propose := <-c.channel.Propose:
+			c.proposalFinder.Set(propose)
+		case <-c.channel.Vote:
+			break
+		case preCommit := <-c.channel.PreCommit:
+			c.preCommitFinder.Set(preCommit)
+			if _, ok := c.preCommitFinder.Get(); ok {
+				return nil
+			}
+		}
+	}
 }
 
-func (c *ConsensusStepUsecase) Commit() error {
-	proposal, ok := c.lock.GetLockedProposal(0)
+func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
+	proposal, ok := c.lock.GetLockedProposal(height)
 	if !ok {
 		return errors.Wrapf(ErrConsensusCommit,
-			"Not Founbd Locked Proposal")
+			"Not Found Locked Proposal")
 	}
 	block := proposal.GetBlock()
+	if err := c.sfv.Validate(block); err != nil {
+		return errors.Wrapf(ErrConsensusCommit, err.Error())
+	}
 	c.bc.Commit(block)
 	return nil
 }

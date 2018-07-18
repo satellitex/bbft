@@ -1,6 +1,10 @@
 package dba
 
-import "github.com/satellitex/bbft/model"
+import (
+	"github.com/satellitex/bbft/model"
+	"math/rand"
+	"sort"
+)
 
 type PeerService interface {
 	Size() int
@@ -10,6 +14,7 @@ type PeerService interface {
 	GetPeers() []model.Peer
 	GetNumberOfAllowedFailedPeers() int
 	GetNumberOfRequiredAcceptPeers() int
+	GetPermutationPeers(height int64) []model.Peer
 }
 
 type PeerServiceOnMemory struct {
@@ -50,9 +55,15 @@ func (p *PeerServiceOnMemory) GetPeerFromAddress(address string) (model.Peer, bo
 }
 
 func (p *PeerServiceOnMemory) GetPeers() []model.Peer {
+	keys := make([]string, 0, p.Size())
+	for key, _ := range p.fromAddress {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
 	ret := make([]model.Peer, 0, p.Size())
-	for _, peer := range p.peers {
-		ret = append(ret, peer)
+	for _, key := range keys {
+		ret = append(ret, p.fromAddress[key])
 	}
 	return ret
 }
@@ -63,4 +74,13 @@ func (p *PeerServiceOnMemory) GetNumberOfAllowedFailedPeers() int {
 
 func (p *PeerServiceOnMemory) GetNumberOfRequiredAcceptPeers() int {
 	return p.GetNumberOfAllowedFailedPeers()*2 + 1
+}
+
+func (p *PeerServiceOnMemory) GetPermutationPeers(height int64) []model.Peer {
+	rnd := rand.New(rand.NewSource(height))
+	peers := p.GetPeers()
+	rnd.Shuffle(len(peers), func(i, j int) {
+		peers[i], peers[j] = peers[j], peers[i]
+	})
+	return peers
 }

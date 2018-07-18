@@ -46,6 +46,12 @@ func RandomVoteMessageFromPeer(t *testing.T, peer model.Peer) model.VoteMessage 
 	return vote
 }
 
+func RandomVoteMessageFromPeerWithBlock(t *testing.T, peer model.Peer, block model.Block) model.VoteMessage {
+	vote := convertor.NewModelFactory().NewVoteMessage(GetHash(t, block))
+	vote.Sign(peer.GetPubkey(), peer.(*PeerWithPriv).PrivKey)
+	return vote
+}
+
 type PeerWithPriv struct {
 	*convertor.Peer
 	PrivKey []byte

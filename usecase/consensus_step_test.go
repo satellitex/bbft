@@ -118,7 +118,7 @@ func TestPreCommitFinder(t *testing.T) {
 
 }
 
-func NewTestConsensusStepUsecase() (*config.BBFTConfig, dba.BlockChain, dba.PeerService, dba.Lock,
+func NewTestConsensusStepUsecase(t *testing.T) (*config.BBFTConfig, dba.BlockChain, dba.PeerService, dba.Lock,
 	dba.ProposalTxQueue, model.ConsensusSender, *ReceiveChannel, ConsensusStep) {
 
 	conf := GetTestConfig()
@@ -132,18 +132,8 @@ func NewTestConsensusStepUsecase() (*config.BBFTConfig, dba.BlockChain, dba.Peer
 	factory := convertor.NewModelFactory()
 	channel := NewReceiveChannel(conf)
 
-	consensusStep := NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, channel)
-	return conf, bc, ps, lock, queue, sender, channel, consensusStep
-}
-
-func TestConsensusStepUsecase_Propose(t *testing.T) {
-	conf, bc, ps, lock, queue, sender, channel, c := NewTestConsensusStepUsecase()
-	factory := convertor.NewModelFactory()
-
 	//First Commit
 	bc.Commit(RandomCommitableBlock(t, bc))
-	top, ok := bc.Top()
-	require.True(t, ok)
 
 	ps.AddPeer(&PeerWithPriv{
 		&convertor.Peer{"myself", conf.PublicKey},
@@ -153,9 +143,22 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 	ps.AddPeer(RandomPeerWithPriv())
 	ps.AddPeer(RandomPeerWithPriv())
 
+	consensusStep := NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, channel)
+	return conf, bc, ps, lock, queue, sender, channel, consensusStep
+}
+
+func TestConsensusStepUsecase_Propose(t *testing.T) {
+	conf, bc, ps, lock, queue, sender, channel, c := NewTestConsensusStepUsecase(t)
+	factory := convertor.NewModelFactory()
+
+	top, ok := bc.Top()
+	require.True(t, ok)
+
+	var height int64 = 1
+
 	// myselfId is Round when myself is Leader
 	myselfId := func() int32 {
-		for id, p := range ps.GetPermutationPeers(0) {
+		for id, p := range ps.GetPermutationPeers(height) {
 			if bytes.Equal(p.GetPubkey(), conf.PublicKey) {
 				return int32(id)
 			}
@@ -172,10 +175,10 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 		// set CommitTime
 		c.(*ConsensusStepUsecase).RoundCommitTime = time.Duration(Now())
 		// not leader
-		err := c.Propose(0, myselfId)
+		err := c.Propose(height, myselfId)
 		assert.NoError(t, err)
 
-		tmp, err := factory.NewBlock(0, GetHash(t, top),
+		tmp, err := factory.NewBlock(height, GetHash(t, top),
 			int64(c.(*ConsensusStepUsecase).RoundCommitTime), []model.Transaction{validTx})
 		tmp.Sign(conf.PublicKey, conf.SecretKey)
 		require.NoError(t, err)
@@ -190,7 +193,7 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 		startTime := Now()
 		c.(*ConsensusStepUsecase).ProposeTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
 		// not leader
-		err := c.Propose(0, int32((myselfId+1)%4))
+		err := c.Propose(height, int32((myselfId+1)%4))
 		endTime := Now()
 
 		assert.NoError(t, err)
@@ -201,9 +204,9 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 	t.Run("not leader get proposal case", func(t *testing.T) {
 		c.(*ConsensusStepUsecase).ProposeTimeOut = time.Duration(Now()) + conf.ProposeMaxCalcTime + conf.AllowedConnectDelayTime
 
-		expectedProposal := RandomProposalWithHeightRound(t, 0, int32((myselfId+2)%3))
+		expectedProposal := RandomProposalWithHeightRound(t, height, int32((myselfId+2)%4))
 		go func() {
-			err := c.Propose(0, int32((myselfId+2)%4))
+			err := c.Propose(height, int32((myselfId+2)%4))
 			assert.NoError(t, err)
 			assert.Equal(t, expectedProposal, c.(*ConsensusStepUsecase).ThisRoundProposal)
 		}()
@@ -213,13 +216,13 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 	t.Run("not leader get vote locked case", func(t *testing.T) {
 		c.(*ConsensusStepUsecase).ProposeTimeOut = time.Duration(Now()) + conf.ProposeMaxCalcTime + conf.AllowedConnectDelayTime
 
-		expectedProposal := RandomProposalWithHeightRound(t, 0, int32((myselfId+2)%3))
+		expectedProposal := RandomProposalWithHeightRound(t, height, int32((myselfId+2)%4))
 		lock.RegisterProposal(expectedProposal)
 
 		go func() {
-			err := c.Propose(0, int32((myselfId+3)%4))
+			err := c.Propose(height, int32((myselfId+3)%4))
 			assert.NoError(t, err)
-			actual, ok := lock.GetLockedProposal(0)
+			actual, ok := lock.GetLockedProposal(height)
 			require.True(t, ok)
 			assert.Equal(t, expectedProposal, actual)
 		}()
@@ -228,9 +231,75 @@ func TestConsensusStepUsecase_Propose(t *testing.T) {
 			require.NoError(t, lock.AddVoteMessage(vote))
 			channel.Vote <- vote
 		}
-		actualProposal, ok := lock.GetLockedProposal(0)
+		actualProposal, ok := lock.GetLockedProposal(height)
 		require.True(t, ok)
 		require.Equal(t, expectedProposal, actualProposal)
 	})
+}
+
+func TestConsensusStepUsecase_Vote(t *testing.T) {
+	conf, bc, ps, lock, _, sender, channel, c := NewTestConsensusStepUsecase(t)
+	factory := convertor.NewModelFactory()
+
+	_, ok := bc.Top()
+	require.True(t, ok)
+
+	var height int64 = 1
+
+	t.Run("normal case, voteTimeOut", func(t *testing.T) {
+		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
+
+		startTime := Now()
+		err := c.Vote(height, 0)
+		endTime := Now()
+		assert.NoError(t, err)
+		assert.True(t, TimeParseDuration(t, "200ms") < time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+		assert.True(t, TimeParseDuration(t, "210ms") > time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+	})
+
+	t.Run("normal case, validate proposal and sendVote", func(t *testing.T) {
+		validProposal, err := factory.NewProposal(RandomCommitableBlock(t, bc), 0)
+		require.NoError(t, err)
+
+		c.(*ConsensusStepUsecase).ThisRoundProposal = validProposal
+		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + conf.VoteMaxCalcTime + conf.AllowedConnectDelayTime
+		lock.RegisterProposal(validProposal)
+
+		go func() {
+			err := c.Vote(height, 0)
+			assert.NoError(t, err)
+
+			actual, ok := lock.GetLockedProposal(height)
+			require.True(t, ok)
+			assert.Equal(t, validProposal, actual)
+
+			actualVote := sender.(*convertor.MockConsensusSender).VoteMessage
+			expectedVote := RandomVoteMessageFromPeerWithBlock(t, ps.GetPermutationPeers(height)[0], validProposal.GetBlock())
+			assert.Equal(t, expectedVote, actualVote)
+		}()
+		for _, p := range ps.GetPeers()[1:] {
+			vote := RandomVoteMessageFromPeerWithBlock(t, p, validProposal.GetBlock())
+			require.NoError(t, lock.AddVoteMessage(vote))
+			channel.Vote <- vote
+		}
+
+		actualProposal, ok := lock.GetLockedProposal(height)
+		require.True(t, ok)
+		require.Equal(t, validProposal, actualProposal)
+	})
+
+	t.Run("normal case, if has lock, no wait voteTimeOut", func(t *testing.T) {
+		c.(*ConsensusStepUsecase).VoteTimeOut = time.Duration(Now()) + TimeParseDuration(t, "200ms")
+
+		startTime := Now()
+		err := c.Vote(height, 0)
+		endTime := Now()
+		assert.NoError(t, err)
+		assert.True(t, TimeParseDuration(t, "190ms") > time.Duration(endTime-startTime), "%v", time.Duration(endTime-startTime))
+	})
+
+}
+
+func TestConsensusStepUsecase_PreCommit(t *testing.T) {
 
 }

@@ -56,9 +56,6 @@ func RandomPeerService(t *testing.T, n int) dba.PeerService {
 	ps := dba.NewPeerServiceOnMemory()
 	for i := 0; i < n; i++ {
 		ps.AddPeer(RandomPeer())
-		ps.AddPeer(RandomPeer())
-		ps.AddPeer(RandomPeer())
-		ps.AddPeer(RandomPeer())
 	}
 	return ps
 }

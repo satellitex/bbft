@@ -83,7 +83,7 @@ func AuthParamFromMD(ctx context.Context, header string, expectedScheme string) 
 	return splits[1], nil
 }
 
-func GetPubkey(ctx context.Context) ([]byte, error) {
+func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
 	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey, AuthorizerPubkeyLabel)
 	if err != nil {
 		fmt.Printf("Failed Auth FromMD pubkey(%s) Label: %s", AuthorizerPubkeyLabel, err.Error())
@@ -92,7 +92,7 @@ func GetPubkey(ctx context.Context) ([]byte, error) {
 	return []byte(pubStr), nil
 }
 
-func GetSignature(ctx context.Context) ([]byte, error) {
+func (a *Author) GetSignature(ctx context.Context) ([]byte, error) {
 	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature, AuthorizeSignatureLabel)
 	if err != nil {
 		fmt.Printf("Failed Auth FromMD signature(%s) Label: %s", AuthorizeSignatureLabel, err.Error())
@@ -102,7 +102,7 @@ func GetSignature(ctx context.Context) ([]byte, error) {
 }
 
 func (a *Author) DefaultReceiveAuth(ctx context.Context) (context.Context, error) {
-	pubkey, err := GetPubkey(ctx)
+	pubkey, err := a.GetPubkey(ctx)
 	if err != nil {
 		return ctx, err
 	}
@@ -113,11 +113,11 @@ func (a *Author) DefaultReceiveAuth(ctx context.Context) (context.Context, error
 }
 
 func (a *Author) ProtoAurhorize(ctx context.Context, proto proto.Message) (context.Context, error) {
-	signature, err := GetSignature(ctx)
+	signature, err := a.GetSignature(ctx)
 	if err != nil {
 		return ctx, err
 	}
-	pubkey, err := GetPubkey(ctx)
+	pubkey, err := a.GetPubkey(ctx)
 	if err != nil {
 		return ctx, err
 	}

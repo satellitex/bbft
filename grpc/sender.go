@@ -116,15 +116,15 @@ func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
 		waiter := &sync.WaitGroup{}
 		for client := range clientChan {
 			waiter.Add(1)
-			go func() {
-				if _, err := client.Propose(ctx, proto.Proposal); err != nil {
+			go func(c bbft.ConsensusGateClient) {
+				if _, err := c.Propose(ctx, proto.Proposal); err != nil {
 					fmt.Println("Failed Propose Error : ", err.Error())
 					mutex.Lock()
 					errs = multierr.Append(errs, err)
 					mutex.Unlock()
 				}
 				waiter.Done()
-			}()
+			}(client)
 		}
 		waiter.Wait()
 		if errs != nil {

@@ -18,4 +18,4 @@ test:
 
 .PHONY: test-ci
 test-ci:
-	go test -v $(shell glide novendor | grep -v grpc)
+	go test -v $(shell glide novendor)

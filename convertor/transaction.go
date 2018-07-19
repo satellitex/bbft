@@ -19,10 +19,16 @@ type TransactionPayload struct {
 }
 
 func (t *Transaction) GetPayload() model.TransactionPayload {
+	if t.Transaction == nil {
+		return &TransactionPayload{nil}
+	}
 	return &TransactionPayload{t.Payload}
 }
 
 func (t *Transaction) GetHash() ([]byte, error) {
+	if t.Transaction == nil {
+		return nil, errors.New("*bbft.Transaction is nil")
+	}
 	res, err := CalcHashFromProto(t.Payload)
 	if err != nil {
 		return nil, errors.Wrapf(ErrCalcHashFromProto, err.Error())

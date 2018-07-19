@@ -44,6 +44,13 @@ func TestBlock_FailedGetHash(t *testing.T) {
 		_, err := block.GetHash()
 		assert.EqualError(t, errors.Cause(err), model.ErrTransactionGetHash.Error())
 	})
+	t.Run("failed nil bbft Block", func(t *testing.T) {
+		block := ValidSignedBlock(t)
+		block.(*Block).Block = nil
+
+		_, err := block.GetHash()
+		assert.Error(t, err)
+	})
 }
 
 func TestBlock_SignAndVerify(t *testing.T) {

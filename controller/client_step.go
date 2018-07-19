@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 	"github.com/satellitex/bbft/usecase"
 	"golang.org/x/net/context"
@@ -24,14 +26,14 @@ func NewClientGateController(receiver usecase.ClientGateReceiver, author *conver
 func (c *ClientGateController) Write(ctx context.Context, tx *bbft.Transaction) (*bbft.TxResponse, error) {
 	transaction := &convertor.Transaction{tx}
 
-	ctx, err := c.author.ProtoAurhorize(ctx, transaction)
+	err := c.receiver.Gate(transaction)
 	if err != nil {
-		return nil, err
-	}
-
-	err = c.receiver.Gate(transaction)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		cause := errors.Cause(err)
+		if cause == model.ErrStatelessTxValidate {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		} else {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 	return &bbft.TxResponse{}, nil
 }

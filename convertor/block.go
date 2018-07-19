@@ -19,7 +19,10 @@ type BlockHeader struct {
 }
 
 func (b *Block) GetHeader() model.BlockHeader {
-	return &BlockHeader{b.Header}
+	if b.Block != nil {
+		return &BlockHeader{b.Header}
+	}
+	return &BlockHeader{nil}
 }
 
 func (b *Block) GetTransactions() []model.Transaction {
@@ -31,7 +34,10 @@ func (b *Block) GetTransactions() []model.Transaction {
 }
 
 func (b *Block) GetSignature() model.Signature {
-	return &Signature{b.Signature}
+	if b.Block != nil {
+		return &Signature{b.Signature}
+	}
+	return &Signature{nil}
 }
 
 func (b *Block) GetHash() ([]byte, error) {

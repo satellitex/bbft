@@ -1,11 +1,13 @@
 package convertor
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
+	"github.com/satellitex/bbft/model"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -129,6 +131,23 @@ func (a *Author) ProtoAurhorize(ctx context.Context, proto proto.Message) (conte
 	}
 	if _, ok := a.ps.GetPeer(pubkey); !ok {
 		return ctx, status.Errorf(codes.PermissionDenied, "Failed Auth Unknown Peer's pubkey: %x", pubkey)
+	}
+	return ctx, nil
+}
+
+func (a *Author) VerifyOnlyLeader(ctx context.Context, proposal model.Proposal) (context.Context, error) {
+	height := proposal.GetBlock().GetHeader().GetHeight()
+	round := proposal.GetRound()
+	peers := a.ps.GetPermutationPeers(height)
+	if int32(len(peers)) > round && round >= 0 {
+		expPubkey := peers[round].GetPubkey()
+		actPubkey, err := a.GetPubkey(ctx)
+		if err != nil {
+			return ctx, err
+		}
+		if !bytes.Equal(actPubkey, expPubkey) {
+			return ctx, status.Errorf(codes.PermissionDenied, "not signed by leader Peer when height: %d, round: %d", height, round)
+		}
 	}
 	return ctx, nil
 }

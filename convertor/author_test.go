@@ -1,10 +1,12 @@
 package convertor_test
 
 import (
+	"bytes"
 	"context"
 	. "github.com/satellitex/bbft/convertor"
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"testing"
@@ -61,5 +63,33 @@ func TestAuthor(t *testing.T) {
 
 		_, err = author.ProtoAurhorize(ctx, proto.(*Proposal))
 		ValidateStatusCode(t, err, codes.Unauthenticated)
+	})
+
+	t.Run("test verify only leader", func(t *testing.T) {
+		id := func() int32 {
+			for i, p := range ps.GetPermutationPeers(0) {
+				if bytes.Equal(p.GetPubkey(), conf.PublicKey) {
+					return int32(i)
+				}
+			}
+			return -1
+		}()
+		require.NotEqual(t, -1, id)
+		proto := RandomProposalWithHeightRound(t, 0, id)
+		ctx, err := NewContextByProtobufDebug(conf, proto.(*Proposal))
+		require.NoError(t, err)
+
+		// success
+		_, err = author.VerifyOnlyLeader(ctx, proto)
+		assert.NoError(t, err)
+
+		evilConf := *conf
+		epub, epri := NewKeyPair()
+		evilConf.PublicKey = epub
+		evilConf.SecretKey = epri
+		ctx, err = NewContextByProtobufDebug(&evilConf, proto.(*Proposal))
+		// failed not leader
+		_, err = author.VerifyOnlyLeader(ctx, proto)
+		ValidateStatusCode(t, err, codes.PermissionDenied)
 	})
 }

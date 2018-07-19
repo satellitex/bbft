@@ -43,26 +43,71 @@ func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transactio
 	return &bbft.ConsensusResponse{}, nil
 }
 
-func (c *ConsensusController) Propose(_ context.Context, p *bbft.Proposal) (*bbft.ConsensusResponse, error) {
+func (c *ConsensusController) Propose(ctx context.Context, p *bbft.Proposal) (*bbft.ConsensusResponse, error) {
+	ctx, err := c.author.ProtoAurhorize(ctx, p)
+	if err != nil { // Unauthenticated ( code = 16 )
+		return nil, err
+	}
+
 	proposal := &convertor.Proposal{p}
-	err := c.receiver.Propose(proposal)
+	ctx, err = c.author.VerifyOnlyLeader(ctx, proposal)
+	if err != nil { // PermissionDenied ( code = 7 )
+		return nil, err
+	}
+
+	err = c.receiver.Propose(proposal)
 	if err != nil {
+		cause := errors.Cause(err)
+		if cause == model.ErrInvalidProposal ||
+			cause == model.ErrStatelessBlockValidate {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		} else if cause == usecase.ErrAlradyReceivedSameObject {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
 		return nil, err
 	}
 	return &bbft.ConsensusResponse{}, nil
 }
-func (c *ConsensusController) Vote(_ context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+
+func (c *ConsensusController) Vote(ctx context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+	ctx, err := c.author.ProtoAurhorize(ctx, v)
+	if err != nil { // Unauthenticated ( code = 16 )
+		return nil, err
+	}
+
 	vote := &convertor.VoteMessage{v}
-	err := c.receiver.Vote(vote)
+	err = c.receiver.Vote(vote)
 	if err != nil {
+		cause := errors.Cause(err)
+		if cause == model.ErrInvalidVoteMessage ||
+			cause == model.ErrVoteMessageVerify ||
+			cause == usecase.ErrVoteNotInPeerService {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		} else if cause == usecase.ErrAlradyReceivedSameObject {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
 		return nil, err
 	}
 	return &bbft.ConsensusResponse{}, nil
 }
-func (c *ConsensusController) PreCommit(_ context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+
+func (c *ConsensusController) PreCommit(ctx context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+	ctx, err := c.author.ProtoAurhorize(ctx, v)
+	if err != nil { // Unauthenticated ( code = 16 )
+		return nil, err
+	}
+
 	preCommit := &convertor.VoteMessage{v}
-	err := c.receiver.PreCommit(preCommit)
+	err = c.receiver.PreCommit(preCommit)
 	if err != nil {
+		cause := errors.Cause(err)
+		if cause == model.ErrInvalidVoteMessage ||
+			cause == model.ErrVoteMessageVerify ||
+			cause == usecase.ErrPreCommitNotInPeerService {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		} else if cause == usecase.ErrAlradyReceivedSameObject {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
 		return nil, err
 	}
 	return &bbft.ConsensusResponse{}, nil

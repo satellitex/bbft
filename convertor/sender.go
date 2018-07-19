@@ -1,16 +1,13 @@
 package convertor
 
 import (
-	"context"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type GrpcConnectionManager struct {
@@ -59,23 +56,9 @@ func NewConsensusSender(conf *config.BBFTConfig, ps dba.PeerService) model.Conse
 	return sender
 }
 
-func newContextByProtobuf(conf *config.BBFTConfig, proto proto.Message) (context.Context, error) {
-	hash, err := CalcHashFromProto(proto)
-	if err != nil {
-		return nil, err
-	}
-	signature, err := Sign(conf.SecretKey, hash)
-	if err != nil {
-		return nil, err
-	}
-	md := metadata.Pairs("ProtobufHash", string(hash), "Signature", string(signature), "Pubkey", string(conf.PublicKey))
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	return ctx, nil
-}
-
 func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 	if proto, ok := tx.(*Transaction); ok {
-		ctx, err := newContextByProtobuf(s.conf, proto)
+		ctx, err := NewContextByProtobuf(s.conf, proto)
 		if err != nil {
 			return err
 		}

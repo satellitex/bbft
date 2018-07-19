@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/model"
@@ -24,6 +25,7 @@ func NewClientGateController(receiver usecase.ClientGateReceiver, author *conver
 }
 
 func (c *ClientGateController) Write(ctx context.Context, tx *bbft.Transaction) (*bbft.TxResponse, error) {
+	fmt.Println("Receive Write : ", tx)
 	transaction := &convertor.Transaction{tx}
 
 	err := c.receiver.Gate(transaction)

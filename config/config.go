@@ -1,7 +1,7 @@
 package config
 
 import (
-	_ "github.com/kelseyhightower/envconfig"
+	"github.com/kelseyhightower/envconfig"
 	"time"
 )
 
@@ -29,6 +29,10 @@ type BBFTConfig struct {
 }
 
 var config BBFTConfig
+
+func Init() {
+	envconfig.MustProcess("bbft", &config)
+}
 
 func GetConfig() *BBFTConfig {
 	return &config

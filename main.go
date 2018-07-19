@@ -20,6 +20,7 @@ func main() {
 
 	fmt.Println("=========================== boot bbft ===========================")
 
+	config.Init()
 	conf := config.GetConfig()
 
 	l, err := net.Listen("tcp", ":"+conf.Port)

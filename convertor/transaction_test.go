@@ -47,4 +47,10 @@ func TestTransaction_Verfy(t *testing.T) {
 		tx.(*Transaction).Signatures = make([]*bbft.Signature, 5)
 		assert.EqualError(t, errors.Cause(tx.Verify()), model.ErrInvalidSignature.Error())
 	})
+	t.Run("failed nil transaction", func(t *testing.T) {
+		tx, err := NewTxModelBuilder().Message(RandomStr()).Build()
+		require.NoError(t, err)
+		tx.(*Transaction).Transaction = nil
+		assert.EqualError(t, errors.Cause(tx.Verify()), model.ErrTransactionGetHash.Error())
+	})
 }

@@ -16,7 +16,7 @@ func TestAuthor(t *testing.T) {
 
 	ps := RandomPeerService(t, 4)
 
-	author := NewAuthoer(ps)
+	author := NewAuthor(ps)
 
 	t.Run("failed case, Not found conf peer in PeerService", func(t *testing.T) {
 		proto := RandomProposal(t)

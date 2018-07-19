@@ -9,11 +9,17 @@ import (
 
 type ConsensusController struct {
 	receiver usecase.ConsensusReceiver
+	author   *convertor.Author
 }
 
-func (c *ConsensusController) Propagate(_ context.Context, tx *bbft.Transaction) (*bbft.ConsensusResponse, error) {
+func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transaction) (*bbft.ConsensusResponse, error) {
+	ctx, err := c.author.ProtoAurhorize(ctx, tx)
+	if err != nil { // Unauthenticated ( code = 16 )
+		return nil, err
+	}
+
 	proposalTx := &convertor.Transaction{tx}
-	err := c.receiver.Propagate(proposalTx)
+	err = c.receiver.Propagate(proposalTx)
 	if err != nil {
 		return nil, err
 	}

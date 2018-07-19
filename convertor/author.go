@@ -63,7 +63,7 @@ type Author struct {
 	ps dba.PeerService
 }
 
-func NewAuthoer(ps dba.PeerService) *Author {
+func NewAuthor(ps dba.PeerService) *Author {
 	return &Author{ps}
 }
 

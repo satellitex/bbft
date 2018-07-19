@@ -56,6 +56,9 @@ var (
 )
 
 func CalcHashFromProto(msg proto.Message) ([]byte, error) {
+	if msg == nil {
+		return nil, errors.New("msg is nil")
+	}
 	pb, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err

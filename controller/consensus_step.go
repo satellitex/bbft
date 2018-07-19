@@ -1,10 +1,14 @@
 package controller
 
 import (
+	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 	"github.com/satellitex/bbft/usecase"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ConsensusController struct {
@@ -21,6 +25,12 @@ func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transactio
 	proposalTx := &convertor.Transaction{tx}
 	err = c.receiver.Propagate(proposalTx)
 	if err != nil {
+		cause := errors.Cause(err)
+		if cause == model.ErrStatelessTxValidate {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		} else if cause == usecase.ErrAlradyReceivedSameObject {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
 		return nil, err
 	}
 	return &bbft.ConsensusResponse{}, nil

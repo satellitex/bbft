@@ -2,7 +2,6 @@ package convertor_test
 
 import (
 	"context"
-	"fmt"
 	. "github.com/satellitex/bbft/convertor"
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/stretchr/testify/assert"
@@ -20,11 +19,14 @@ func TestAuthor(t *testing.T) {
 
 	t.Run("failed case, Not found conf peer in PeerService", func(t *testing.T) {
 		proto := RandomProposal(t)
-		ctx, err := NewContextByProtobuf(conf, proto.(*Proposal))
+		ctx, err := NewContextByProtobufDebug(conf, proto.(*Proposal))
 		assert.NoError(t, err)
 
 		_, err = author.DefaultReceiveAuth(ctx)
-		ValidateStatusCode(t, err, codes.Unauthenticated)
+		ValidateStatusCode(t, err, codes.PermissionDenied)
+
+		_, err = author.ProtoAurhorize(ctx, proto.(*Proposal))
+		ValidateStatusCode(t, err, codes.PermissionDenied)
 	})
 
 	// add conf peer to peer service
@@ -34,7 +36,6 @@ func TestAuthor(t *testing.T) {
 		proto := RandomProposal(t)
 		ctx, err := NewContextByProtobufDebug(conf, proto.(*Proposal))
 		assert.NoError(t, err)
-		fmt.Println(ctx)
 
 		_, err = author.DefaultReceiveAuth(ctx)
 		assert.NoError(t, err)

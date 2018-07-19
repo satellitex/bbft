@@ -1,10 +1,10 @@
 package test_utils
 
 import (
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"testing"
-	"github.com/stretchr/testify/require"
 )
 
 func StatusCodeEquals(err error, code codes.Code) bool {

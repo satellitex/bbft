@@ -67,10 +67,10 @@ func NewAuthoer(ps dba.PeerService) *Author {
 	return &Author{ps}
 }
 
-func AuthParamFromMD(ctx context.Context, Header string, expectedScheme string) (string, error) {
-	val := metautils.ExtractIncoming(ctx).Get(Header)
+func AuthParamFromMD(ctx context.Context, header string, expectedScheme string) (string, error) {
+	val := metautils.ExtractIncoming(ctx).Get(header)
 	if val == "" {
-		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated Header with "+Header)
+		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated header with "+header)
 
 	}
 	splits := strings.SplitN(val, " ", 2)

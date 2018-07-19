@@ -28,6 +28,8 @@ import (
 )
 
 func SetUpTestServer(t *testing.T, conf *config.BBFTConfig, ps dba.PeerService, s *grpc.Server) {
+	fmt.Println(conf.Port)
+
 	l, err := net.Listen("tcp", ":"+conf.Port)
 	if err != nil {
 		panic(err.Error())
@@ -42,7 +44,6 @@ func SetUpTestServer(t *testing.T, conf *config.BBFTConfig, ps dba.PeerService, 
 	pool := dba.NewReceiverPoolOnMemory(conf)
 
 	bc := dba.NewBlockChainOnMemory()
-	bc.Commit(RandomCommitableBlock(t, bc))
 
 	slv := convertor.NewStatelessValidator()
 	sender := convertor.NewMockConsensusSender() // WIP
@@ -196,7 +197,7 @@ func TestGrpcConsensusSender_Propagate(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.sender.Propagate(c.tx)
 			if c.err != nil {
-				assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
+				assert.EqualError(t, errors.Cause(err), c.err.Error())
 			} else if c.code != codes.OK {
 				ValidateStatusCode(t, err, c.code)
 			} else {
@@ -209,20 +210,33 @@ func TestGrpcConsensusSender_Propagate(t *testing.T) {
 }
 
 func TestGrpcConsensusSender_Propose(t *testing.T) {
-	conf := GetTestConfig()
-	ps := RandomPeerService(t, 3)
-	ps.AddPeer(RandomPeerFromConf(conf))
+	confs := []*config.BBFTConfig{
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+	}
+	confs[0].Port = "50053"
+	confs[1].Port = "50054"
+	confs[2].Port = "50055"
+	confs[3].Port = "50056"
 
-	server := NewTestGrpcServer()
+	ps := dba.NewPeerServiceOnMemory()
+	for _, conf := range confs {
+		ps.AddPeer(RandomPeerFromConf(conf))
+	}
 
-	go func() {
-		//WIP
-		SetUpTestServer(t, conf, ps, server)
-	}()
+	servers := make([]*grpc.Server, 0, 4)
+	for i, conf := range confs {
+		servers = append(servers, NewTestGrpcServer())
+		go func(conf *config.BBFTConfig, server *grpc.Server) {
+			SetUpTestServer(t, conf, ps, server)
+		}(conf, servers[i])
+	}
 
 	leaderId := func() int32 {
 		for i, p := range ps.GetPermutationPeers(1) {
-			if bytes.Equal(conf.PublicKey, p.GetPubkey()) {
+			if bytes.Equal(confs[0].PublicKey, p.GetPubkey()) {
 				return int32(i)
 			}
 		}
@@ -231,20 +245,16 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 	require.NotEqual(t, -1, leaderId)
 
 	validProposal := RandomProposalWithHeightRound(t, 1, leaderId)
-	invalidProposal := RandomInvalidProposal(t).(*convertor.Proposal)
+	invalidProposal := RandomInvalidProposal(t)
 
-	evilConf := *conf
+	evilConf := *confs[0]
 	pk, sk := convertor.NewKeyPair()
 	evilConf.PublicKey = pk
 	evilConf.SecretKey = sk
-	sender := NewGrpcConsensusSender(conf, ps)
+
+	sender := NewGrpcConsensusSender(confs[0], ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
-
-	notLeaderConf := evilConf
-	notLeaderConf.PublicKey = ps.GetPermutationPeers(1)[(leaderId+1)%2].GetPubkey()
-	notLeaderConf.PublicKey = ps.GetPermutationPeers(1)[(leaderId+1)%2].(*PeerWithPriv).PrivKey
-
-	notLeaderSender := NewGrpcConsensusSender(&notLeaderConf, ps)
+	notLeaderSender := NewGrpcConsensusSender(confs[1], ps)
 
 	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
 	for _, c := range []struct {
@@ -287,7 +297,7 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 			nil,
 			sender,
 			codes.Unauthenticated,
-			model.ErrInvalidTransaction,
+			model.ErrInvalidProposal,
 		},
 		{
 			"failed case, duplicate sent",
@@ -300,14 +310,16 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.sender.Propose(c.proposal)
 			if c.err != nil {
-				assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
+				assert.EqualError(t, errors.Cause(err), c.err.Error())
 			} else if c.code != codes.OK {
-				ValidateStatusCode(t, err, c.code)
+				MultiValidateStatusCode(t, err, c.code)
 			} else {
 				assert.NoError(t, err)
 			}
 		})
 	}
 
-	server.GracefulStop()
+	for _, s := range servers {
+		s.GracefulStop()
+	}
 }

@@ -52,6 +52,14 @@ func RandomVoteMessageFromPeerWithBlock(t *testing.T, peer model.Peer, block mod
 	return vote
 }
 
+func RandomPeerService(t *testing.T, n int) dba.PeerService {
+	ps := dba.NewPeerServiceOnMemory()
+	for i := 0; i < n; i++ {
+		ps.AddPeer(RandomPeer())
+	}
+	return ps
+}
+
 type PeerWithPriv struct {
 	*convertor.Peer
 	PrivKey []byte

@@ -22,7 +22,7 @@ func NewClientGateReceiverUsecase(validator model.StatelessValidator, sender mod
 }
 
 func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {
-	if err := c.slv.TxValidate(tx); err != nil {
+	if err := c.slv.TxValidate(tx); err != nil { // InvalidArgument (code = 3)
 		return errors.Wrapf(model.ErrStatelessTxValidate, err.Error())
 	}
 	err := c.sender.Propagate(tx)

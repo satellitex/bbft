@@ -3,27 +3,30 @@ package convertor
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"strings"
 )
 
 var (
-	headerAuthorize = "authorization"
-	signatureLabel  = "signature"
-	pubkeyLabel     = "pubkey"
+	HeaderAuthorizeSignature = "authorization_sig"
+	HeaderAuthorizePubkey    = "authorization_pub"
+	AuthorizeSignatureLabel  = "signature"
+	AuthorizerPubkeyLabel    = "pubkey"
 )
 
-func newSignatureStr(signature []byte) string {
-	return signatureLabel + " " + string(signature)
+func NewAuthorSignatureStr(signature []byte) string {
+	return AuthorizeSignatureLabel + " " + string(signature)
 }
 
-func newPubKeyStr(pubkey []byte) string {
-	return pubkeyLabel + " " + string(pubkey)
+func NewAuthorPubKeyStr(pubkey []byte) string {
+	return AuthorizerPubkeyLabel + " " + string(pubkey)
 }
 
 func NewContextByProtobuf(conf *config.BBFTConfig, proto proto.Message) (context.Context, error) {
@@ -35,9 +38,24 @@ func NewContextByProtobuf(conf *config.BBFTConfig, proto proto.Message) (context
 	if err != nil {
 		return nil, err
 	}
-	md := metadata.Pairs(headerAuthorize, newSignatureStr(signature),
-		headerAuthorize, newPubKeyStr(conf.PublicKey))
+	md := metadata.Pairs(HeaderAuthorizeSignature, NewAuthorSignatureStr(signature),
+		HeaderAuthorizePubkey, NewAuthorPubKeyStr(conf.PublicKey))
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	return ctx, nil
+}
+
+func NewContextByProtobufDebug(conf *config.BBFTConfig, proto proto.Message) (context.Context, error) {
+	hash, err := CalcHashFromProto(proto)
+	if err != nil {
+		return nil, err
+	}
+	signature, err := Sign(conf.SecretKey, hash)
+	if err != nil {
+		return nil, err
+	}
+	md := metadata.Pairs(HeaderAuthorizeSignature, NewAuthorSignatureStr(signature),
+		HeaderAuthorizePubkey, NewAuthorPubKeyStr(conf.PublicKey))
+	ctx := metadata.NewIncomingContext(context.Background(), md)
 	return ctx, nil
 }
 
@@ -45,19 +63,39 @@ type Author struct {
 	ps dba.PeerService
 }
 
+func NewAuthoer(ps dba.PeerService) *Author {
+	return &Author{ps}
+}
+
+func AuthParamFromMD(ctx context.Context, Header string, expectedScheme string) (string, error) {
+	val := metautils.ExtractIncoming(ctx).Get(Header)
+	if val == "" {
+		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated Header with "+Header)
+
+	}
+	splits := strings.SplitN(val, " ", 2)
+	if len(splits) < 2 {
+		return "", grpc.Errorf(codes.Unauthenticated, "Bad authorization string")
+	}
+	if strings.ToLower(splits[0]) != strings.ToLower(expectedScheme) {
+		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated with "+expectedScheme)
+	}
+	return splits[1], nil
+}
+
 func GetPubkey(ctx context.Context) ([]byte, error) {
-	pubStr, err := grpc_auth.AuthFromMD(ctx, pubkeyLabel)
+	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey, AuthorizerPubkeyLabel)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD pubkey(%s) Label: %s", pubkeyLabel, err.Error())
+		fmt.Printf("Failed Auth FromMD pubkey(%s) Label: %s", AuthorizerPubkeyLabel, err.Error())
 		return nil, err
 	}
 	return []byte(pubStr), nil
 }
 
 func GetSignature(ctx context.Context) ([]byte, error) {
-	sigStr, err := grpc_auth.AuthFromMD(ctx, signatureLabel)
+	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature, AuthorizeSignatureLabel)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD signature(%s) Label: %s", signatureLabel, err.Error())
+		fmt.Printf("Failed Auth FromMD signature(%s) Label: %s", AuthorizeSignatureLabel, err.Error())
 		return nil, err
 	}
 	return []byte(sigStr), nil

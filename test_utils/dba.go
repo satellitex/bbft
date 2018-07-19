@@ -1,6 +1,7 @@
 package test_utils
 
 import (
+	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
@@ -81,6 +82,13 @@ func RandomPeerWithPriv() model.Peer {
 	return &PeerWithPriv{
 		&convertor.Peer{RandomStr(), validPub},
 		validPri,
+	}
+}
+
+func RandomPeerFromConf(conf *config.BBFTConfig) model.Peer {
+	return &PeerWithPriv{
+		&convertor.Peer{conf.Host + ":" + conf.Port, conf.PublicKey},
+		conf.SecretKey,
 	}
 }
 

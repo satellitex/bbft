@@ -8,7 +8,9 @@ import (
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
+	"go.uber.org/multierr"
 	"google.golang.org/grpc"
+	"sync"
 )
 
 type GrpcConnectionManager struct {
@@ -66,15 +68,29 @@ func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 
 		// BroadCast to All Peer in PeerService
 		clientChan := make(chan bbft.ConsensusGateClient)
-		s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		go func() {
+			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		}()
+
+		var errs error
+		mutex := &sync.Mutex{}
+		waiter := &sync.WaitGroup{}
 		for client := range clientChan {
+			waiter.Add(1)
 			go func() {
 				if _, err := client.Propagate(ctx, proto.Transaction); err != nil {
 					fmt.Printf("Failed Propagate Error : %s", err.Error())
+					mutex.Lock()
+					errs = multierr.Append(errs, err)
+					mutex.Unlock()
 				}
+				waiter.Done()
 			}()
 		}
-
+		waiter.Wait()
+		if errs != nil {
+			return errs
+		}
 	} else {
 		return errors.Wrapf(model.ErrInvalidTransaction, "tx can not cast convertor.Transaction: %#v", tx)
 	}

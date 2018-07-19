@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/model"
@@ -24,6 +25,7 @@ func NewConsensusController(receiver usecase.ConsensusReceiver, author *converto
 }
 
 func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transaction) (*bbft.ConsensusResponse, error) {
+	fmt.Println("Propagate!")
 	ctx, err := c.author.ProtoAurhorize(ctx, tx)
 	if err != nil { // Unauthenticated ( code = 16 )
 		return nil, err

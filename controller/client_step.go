@@ -25,7 +25,7 @@ func NewClientGateController(receiver usecase.ClientGateReceiver, author *conver
 }
 
 func (c *ClientGateController) Write(ctx context.Context, tx *bbft.Transaction) (*bbft.TxResponse, error) {
-	fmt.Println("Receive Write : ", tx)
+	fmt.Println("Receive Write!")
 	transaction := &convertor.Transaction{tx}
 
 	err := c.receiver.Gate(transaction)

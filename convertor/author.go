@@ -12,22 +12,19 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"strings"
 )
 
 var (
-	HeaderAuthorizeSignature = "authorization_sig"
-	HeaderAuthorizePubkey    = "authorization_pub"
-	AuthorizeSignatureLabel  = "signature"
-	AuthorizerPubkeyLabel    = "pubkey"
+	HeaderAuthorizeSignature = "authorization_sig-bin"
+	HeaderAuthorizePubkey    = "authorization_pub-bin"
 )
 
 func NewAuthorSignatureStr(signature []byte) string {
-	return AuthorizeSignatureLabel + " " + string(signature)
+	return string(signature)
 }
 
 func NewAuthorPubKeyStr(pubkey []byte) string {
-	return AuthorizerPubkeyLabel + " " + string(pubkey)
+	return string(pubkey)
 }
 
 func NewContextByProtobuf(conf *config.BBFTConfig, proto proto.Message) (context.Context, error) {
@@ -68,35 +65,28 @@ func NewAuthor(ps dba.PeerService) *Author {
 	return &Author{ps}
 }
 
-func AuthParamFromMD(ctx context.Context, header string, expectedScheme string) (string, error) {
+func AuthParamFromMD(ctx context.Context, header string) (string, error) {
 	val := metautils.ExtractIncoming(ctx).Get(header)
 	if val == "" {
 		return "", status.Errorf(codes.Unauthenticated, "Request unauthenticated header with "+header)
 
 	}
-	splits := strings.SplitN(val, " ", 2)
-	if len(splits) < 2 {
-		return "", status.Errorf(codes.Unauthenticated, "Bad authorization string")
-	}
-	if strings.ToLower(splits[0]) != strings.ToLower(expectedScheme) {
-		return "", status.Errorf(codes.Unauthenticated, "Request unauthenticated with "+expectedScheme)
-	}
-	return splits[1], nil
+	return val, nil
 }
 
 func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
-	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey, AuthorizerPubkeyLabel)
+	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD pubkey(%s) Label: %s", AuthorizerPubkeyLabel, err.Error())
+		fmt.Printf("Failed Auth FromMD pubkey: %s", err.Error())
 		return nil, err
 	}
 	return []byte(pubStr), nil
 }
 
 func (a *Author) GetSignature(ctx context.Context) ([]byte, error) {
-	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature, AuthorizeSignatureLabel)
+	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD signature(%s) Label: %s", AuthorizeSignatureLabel, err.Error())
+		fmt.Printf("Failed Auth FromMD signature: %s", err.Error())
 		return nil, err
 	}
 	return []byte(sigStr), nil

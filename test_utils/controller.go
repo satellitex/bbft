@@ -32,3 +32,9 @@ func ValidContext(t *testing.T, conf *config.BBFTConfig, prt proto.Message) cont
 	require.NoError(t, err)
 	return ctx
 }
+
+func ValidContextOutSource(t *testing.T, conf *config.BBFTConfig, prt proto.Message) context.Context {
+	ctx, err := convertor.NewContextByProtobuf(conf, prt)
+	require.NoError(t, err)
+	return ctx
+}

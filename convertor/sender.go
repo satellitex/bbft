@@ -1,23 +1,100 @@
 package convertor
 
 import (
+	"context"
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"github.com/satellitex/bbft/config"
+	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
-type GrpcConsensusSender struct {
-	client bbft.ConsensusGateClient
+type GrpcConnectionManager struct {
+	clients map[string]bbft.ConsensusGateClient
 }
 
-func NewConsensusSender() model.ConsensusSender {
-	return &GrpcConsensusSender{nil}
+func NewGrpcConnectManager() *GrpcConnectionManager {
+	return &GrpcConnectionManager{
+		make(map[string]bbft.ConsensusGateClient),
+	}
+}
+
+func (m *GrpcConnectionManager) CreateConn(peer model.Peer) error {
+	// TODO now Insecure...?
+	gc, err := grpc.Dial(peer.GetAddress(), grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	m.clients[peer.GetAddress()] = bbft.NewConsensusGateClient(gc)
+	return nil
+}
+
+func (m *GrpcConnectionManager) GetConnectsToChannel(peers []model.Peer, ret chan bbft.ConsensusGateClient) {
+	for _, p := range peers {
+		if client, ok := m.clients[p.GetAddress()]; ok {
+			ret <- client
+		} else {
+			if err := m.CreateConn(p); err != nil {
+				fmt.Printf("Error Connection to peer: %#v", p)
+				return
+			}
+			ret <- m.clients[p.GetAddress()]
+		}
+	}
+	close(ret)
+}
+
+type GrpcConsensusSender struct {
+	conf    *config.BBFTConfig
+	manager *GrpcConnectionManager
+	ps      dba.PeerService
+}
+
+func NewConsensusSender(conf *config.BBFTConfig, ps dba.PeerService) model.ConsensusSender {
+	sender := &GrpcConsensusSender{conf: conf, manager: NewGrpcConnectManager()}
+	return sender
+}
+
+func newContextByProtobuf(conf *config.BBFTConfig, proto proto.Message) (context.Context, error) {
+	hash, err := CalcHashFromProto(proto)
+	if err != nil {
+		return nil, err
+	}
+	signature, err := Sign(conf.SecretKey, hash)
+	if err != nil {
+		return nil, err
+	}
+	md := metadata.Pairs("ProtobufHash", string(hash), "Signature", string(signature), "Pubkey", string(conf.PublicKey))
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	return ctx, nil
 }
 
 func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
-	if _, ok := tx.(*Transaction); !ok {
+	if proto, ok := tx.(*Transaction); ok {
+		ctx, err := newContextByProtobuf(s.conf, proto)
+		if err != nil {
+			return err
+		}
+
+		// BroadCast to All Peer in PeerService
+		clientChan := make(chan bbft.ConsensusGateClient)
+		s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		for client := range clientChan {
+			go func() {
+				if _, err := client.Propagate(ctx, proto.Transaction); err != nil {
+					fmt.Printf("Failed Propagate Error : %s", err.Error())
+				}
+			}()
+		}
+
+	} else {
 		return errors.Wrapf(model.ErrInvalidTransaction, "tx can not cast convertor.Transaction: %#v", tx)
 	}
+
 	return nil
 }
 

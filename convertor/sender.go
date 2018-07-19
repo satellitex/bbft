@@ -55,7 +55,7 @@ type GrpcConsensusSender struct {
 }
 
 func NewConsensusSender(conf *config.BBFTConfig, ps dba.PeerService) model.ConsensusSender {
-	sender := &GrpcConsensusSender{conf: conf, manager: NewGrpcConnectManager()}
+	sender := &GrpcConsensusSender{conf: conf, manager: NewGrpcConnectManager(), ps: ps}
 	return sender
 }
 

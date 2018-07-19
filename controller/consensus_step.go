@@ -16,6 +16,13 @@ type ConsensusController struct {
 	author   *convertor.Author
 }
 
+func NewConsensusController(receiver usecase.ConsensusReceiver, author *convertor.Author) *ConsensusController {
+	return &ConsensusController{
+		receiver: receiver,
+		author:   author,
+	}
+}
+
 func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transaction) (*bbft.ConsensusResponse, error) {
 	ctx, err := c.author.ProtoAurhorize(ctx, tx)
 	if err != nil { // Unauthenticated ( code = 16 )

@@ -41,7 +41,7 @@ func TestAuthor(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = author.ProtoAurhorize(ctx, proto.(*Proposal))
-
+		assert.NoError(t, err)
 	})
 
 	t.Run("failed case, TODO", func(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"github.com/satellitex/bbft/proto"
 	. "github.com/satellitex/bbft/test_utils"
 	"github.com/satellitex/bbft/usecase"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"testing"
 )
@@ -50,6 +51,8 @@ func TestClientGateController_Write(t *testing.T) {
 		_, err := ctrl.Write(c.ctx, c.tx)
 		if c.code != codes.OK {
 			ValidateStatusCode(t, err, c.code)
+		} else {
+			assert.NoError(t, err)
 		}
 	}
 }

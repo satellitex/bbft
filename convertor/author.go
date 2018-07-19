@@ -1,13 +1,14 @@
 package convertor
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
+	"github.com/satellitex/bbft/model"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -70,15 +71,15 @@ func NewAuthor(ps dba.PeerService) *Author {
 func AuthParamFromMD(ctx context.Context, header string, expectedScheme string) (string, error) {
 	val := metautils.ExtractIncoming(ctx).Get(header)
 	if val == "" {
-		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated header with "+header)
+		return "", status.Errorf(codes.Unauthenticated, "Request unauthenticated header with "+header)
 
 	}
 	splits := strings.SplitN(val, " ", 2)
 	if len(splits) < 2 {
-		return "", grpc.Errorf(codes.Unauthenticated, "Bad authorization string")
+		return "", status.Errorf(codes.Unauthenticated, "Bad authorization string")
 	}
 	if strings.ToLower(splits[0]) != strings.ToLower(expectedScheme) {
-		return "", grpc.Errorf(codes.Unauthenticated, "Request unauthenticated with "+expectedScheme)
+		return "", status.Errorf(codes.Unauthenticated, "Request unauthenticated with "+expectedScheme)
 	}
 	return splits[1], nil
 }
@@ -107,7 +108,7 @@ func (a *Author) DefaultReceiveAuth(ctx context.Context) (context.Context, error
 		return ctx, err
 	}
 	if _, ok := a.ps.GetPeer(pubkey); !ok {
-		return ctx, status.Errorf(codes.Unauthenticated, "Failed Auth Unknown Peer's pubkey: %x", pubkey)
+		return ctx, status.Errorf(codes.PermissionDenied, "Failed Auth Unknown Peer's pubkey: %x", pubkey)
 	}
 	return ctx, nil
 }
@@ -121,15 +122,32 @@ func (a *Author) ProtoAurhorize(ctx context.Context, proto proto.Message) (conte
 	if err != nil {
 		return ctx, err
 	}
-	if _, ok := a.ps.GetPeer(pubkey); !ok {
-		return ctx, status.Errorf(codes.Unauthenticated, "Failed Auth Unknown Peer's pubkey: %x", pubkey)
-	}
 	hash, err := CalcHashFromProto(proto)
 	if err != nil {
 		return ctx, status.Errorf(codes.Unauthenticated, err.Error())
 	}
 	if err := Verify(pubkey, hash, signature); err != nil {
 		return ctx, status.Errorf(codes.Unauthenticated, err.Error())
+	}
+	if _, ok := a.ps.GetPeer(pubkey); !ok {
+		return ctx, status.Errorf(codes.PermissionDenied, "Failed Auth Unknown Peer's pubkey: %x", pubkey)
+	}
+	return ctx, nil
+}
+
+func (a *Author) VerifyOnlyLeader(ctx context.Context, proposal model.Proposal) (context.Context, error) {
+	height := proposal.GetBlock().GetHeader().GetHeight()
+	round := proposal.GetRound()
+	peers := a.ps.GetPermutationPeers(height)
+	if int32(len(peers)) > round && round >= 0 {
+		expPubkey := peers[round].GetPubkey()
+		actPubkey, err := a.GetPubkey(ctx)
+		if err != nil {
+			return ctx, err
+		}
+		if !bytes.Equal(actPubkey, expPubkey) {
+			return ctx, status.Errorf(codes.PermissionDenied, "not signed by leader Peer when height: %d, round: %d", height, round)
+		}
 	}
 	return ctx, nil
 }

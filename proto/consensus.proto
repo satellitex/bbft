@@ -34,8 +34,6 @@ service ConsensusGate {
      *  1 ) 既に同じ Transaction を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
      *  1 ) 署名の主がPeerでない場合
-     * ResourceExhausted (code = 8) : One of following conditions:
-     *  1 ) ProposalTxQueue が詰まっている場合
      **/
     rpc Propagate (Transaction) returns (ConsensusResponse);
 

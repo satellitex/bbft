@@ -34,9 +34,20 @@ func RandomProposal(t *testing.T) model.Proposal {
 	return proposal
 }
 
+func RandomInvalidProposal(t *testing.T) model.Proposal {
+	proposal, err := convertor.NewModelFactory().NewProposal(InvalidSingedBlock(t), rand.Int31())
+	require.NoError(t, err)
+	return proposal
+}
+
 func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
 	ValidSign(t, vote)
+	return vote
+}
+
+func RandomUnSignedVoteMessage(t *testing.T) model.VoteMessage {
+	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
 	return vote
 }
 
@@ -55,7 +66,7 @@ func RandomVoteMessageFromPeerWithBlock(t *testing.T, peer model.Peer, block mod
 func RandomPeerService(t *testing.T, n int) dba.PeerService {
 	ps := dba.NewPeerServiceOnMemory()
 	for i := 0; i < n; i++ {
-		ps.AddPeer(RandomPeer())
+		ps.AddPeer(RandomPeerWithPriv())
 	}
 	return ps
 }

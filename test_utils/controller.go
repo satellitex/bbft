@@ -1,6 +1,10 @@
 package test_utils
 
 import (
+	"context"
+	"github.com/golang/protobuf/proto"
+	"github.com/satellitex/bbft/config"
+	"github.com/satellitex/bbft/convertor"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,4 +25,10 @@ func ValidateStatusCode(t *testing.T, err error, code codes.Code) {
 	if !StatusCodeEquals(err, code) {
 		t.Errorf("Validate Status Code Error %v, but want %v", err, code)
 	}
+}
+
+func ValidContext(t *testing.T, conf *config.BBFTConfig, prt proto.Message) context.Context {
+	ctx, err := convertor.NewContextByProtobufDebug(conf, prt)
+	require.NoError(t, err)
+	return ctx
 }

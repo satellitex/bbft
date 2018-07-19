@@ -46,6 +46,7 @@ func (c *ConsensusController) Propagate(ctx context.Context, tx *bbft.Transactio
 }
 
 func (c *ConsensusController) Propose(ctx context.Context, p *bbft.Proposal) (*bbft.ConsensusResponse, error) {
+	fmt.Println("Propose!")
 	ctx, err := c.author.ProtoAurhorize(ctx, p)
 	if err != nil { // Unauthenticated ( code = 16 )
 		return nil, err
@@ -72,6 +73,7 @@ func (c *ConsensusController) Propose(ctx context.Context, p *bbft.Proposal) (*b
 }
 
 func (c *ConsensusController) Vote(ctx context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+	fmt.Println("Vote!")
 	ctx, err := c.author.ProtoAurhorize(ctx, v)
 	if err != nil { // Unauthenticated ( code = 16 )
 		return nil, err
@@ -94,6 +96,7 @@ func (c *ConsensusController) Vote(ctx context.Context, v *bbft.VoteMessage) (*b
 }
 
 func (c *ConsensusController) PreCommit(ctx context.Context, v *bbft.VoteMessage) (*bbft.ConsensusResponse, error) {
+	fmt.Println("PreCommit!")
 	ctx, err := c.author.ProtoAurhorize(ctx, v)
 	if err != nil { // Unauthenticated ( code = 16 )
 		return nil, err

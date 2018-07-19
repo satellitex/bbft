@@ -99,7 +99,38 @@ func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 }
 
 func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
-	if _, ok := proposal.(*Proposal); !ok {
+	if proto, ok := proposal.(*Proposal); ok {
+		ctx, err := NewContextByProtobuf(s.conf, proto)
+		if err != nil {
+			return err
+		}
+
+		// BroadCast to All Peer in PeerService
+		clientChan := make(chan bbft.ConsensusGateClient)
+		go func() {
+			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		}()
+
+		var errs error
+		mutex := &sync.Mutex{}
+		waiter := &sync.WaitGroup{}
+		for client := range clientChan {
+			waiter.Add(1)
+			go func() {
+				if _, err := client.Propose(ctx, proto.Proposal); err != nil {
+					fmt.Printf("Failed Propagate Error : %s", err.Error())
+					mutex.Lock()
+					errs = multierr.Append(errs, err)
+					mutex.Unlock()
+				}
+				waiter.Done()
+			}()
+		}
+		waiter.Wait()
+		if errs != nil {
+			return errs
+		}
+	} else {
 		return errors.Wrapf(model.ErrInvalidProposal, "proposal can not cast convertor.Proposal: %#v", proposal)
 	}
 	return nil

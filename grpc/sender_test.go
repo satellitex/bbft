@@ -1,6 +1,7 @@
 package grpc_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
@@ -178,7 +179,7 @@ func TestGrpcConsensusSender_Propagate(t *testing.T) {
 			nil,
 		},
 		{
-			"failed case, unauthenticated",
+			"failed case, nil",
 			nil,
 			sender,
 			codes.Unauthenticated,
@@ -194,6 +195,110 @@ func TestGrpcConsensusSender_Propagate(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.sender.Propagate(c.tx)
+			if c.err != nil {
+				assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
+			} else if c.code != codes.OK {
+				ValidateStatusCode(t, err, c.code)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
+	server.GracefulStop()
+}
+
+func TestGrpcConsensusSender_Propose(t *testing.T) {
+	conf := GetTestConfig()
+	ps := RandomPeerService(t, 3)
+	ps.AddPeer(RandomPeerFromConf(conf))
+
+	server := NewTestGrpcServer()
+
+	go func() {
+		//WIP
+		SetUpTestServer(t, conf, ps, server)
+	}()
+
+	leaderId := func() int32 {
+		for i, p := range ps.GetPermutationPeers(1) {
+			if bytes.Equal(conf.PublicKey, p.GetPubkey()) {
+				return int32(i)
+			}
+		}
+		return -1
+	}()
+	require.NotEqual(t, -1, leaderId)
+
+	validProposal := RandomProposalWithHeightRound(t, 1, leaderId)
+	invalidProposal := RandomInvalidProposal(t).(*convertor.Proposal)
+
+	evilConf := *conf
+	pk, sk := convertor.NewKeyPair()
+	evilConf.PublicKey = pk
+	evilConf.SecretKey = sk
+	sender := NewGrpcConsensusSender(conf, ps)
+	evilSender := NewGrpcConsensusSender(&evilConf, ps)
+
+	notLeaderConf := evilConf
+	notLeaderConf.PublicKey = ps.GetPermutationPeers(1)[(leaderId+1)%2].GetPubkey()
+	notLeaderConf.PublicKey = ps.GetPermutationPeers(1)[(leaderId+1)%2].(*PeerWithPriv).PrivKey
+
+	notLeaderSender := NewGrpcConsensusSender(&notLeaderConf, ps)
+
+	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
+	for _, c := range []struct {
+		name     string
+		proposal model.Proposal
+		sender   model.ConsensusSender
+		code     codes.Code
+		err      error
+	}{
+		{
+			"success case",
+			validProposal,
+			sender,
+			codes.OK,
+			nil,
+		},
+		{
+			"failed case, authenticated but not peer",
+			validProposal,
+			evilSender,
+			codes.PermissionDenied,
+			nil,
+		},
+		{
+			"failed case, authenticated but not leader",
+			validProposal,
+			notLeaderSender,
+			codes.PermissionDenied,
+			nil,
+		},
+		{
+			"failed case, invalid proposal",
+			invalidProposal,
+			sender,
+			codes.InvalidArgument,
+			nil,
+		},
+		{
+			"failed case, nil",
+			nil,
+			sender,
+			codes.Unauthenticated,
+			model.ErrInvalidTransaction,
+		},
+		{
+			"failed case, duplicate sent",
+			validProposal,
+			sender,
+			codes.AlreadyExists,
+			nil,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.sender.Propose(c.proposal)
 			if c.err != nil {
 				assert.EqualError(t, errors.Cause(err), model.ErrInvalidTransaction.Error())
 			} else if c.code != codes.OK {

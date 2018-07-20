@@ -8,7 +8,7 @@ import (
 )
 
 func GetTestConfig() *config.BBFTConfig {
-	testConfig := config.GetConfig()
+	testConfig := &config.BBFTConfig{}
 
 	envconfig.MustProcess("bbft", testConfig)
 

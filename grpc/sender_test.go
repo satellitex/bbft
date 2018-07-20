@@ -323,3 +323,211 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 		s.GracefulStop()
 	}
 }
+
+func TestGrpcConsensusSender_Vote(t *testing.T) {
+	confs := []*config.BBFTConfig{
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+	}
+	confs[0].Port = "50053"
+	confs[1].Port = "50054"
+	confs[2].Port = "50055"
+	confs[3].Port = "50056"
+
+	ps := dba.NewPeerServiceOnMemory()
+	for _, conf := range confs {
+		ps.AddPeer(RandomPeerFromConf(conf))
+	}
+
+	servers := make([]*grpc.Server, 0, 4)
+	for i, conf := range confs {
+		servers = append(servers, NewTestGrpcServer())
+		go func(conf *config.BBFTConfig, server *grpc.Server) {
+			SetUpTestServer(t, conf, ps, server)
+		}(conf, servers[i])
+	}
+
+	validVote := RandomVoteMessageFromPeer(t, ps.GetPeers()[0])
+	unPeerValidVote := RandomVoteMessage(t)
+
+	evilConf := *confs[0]
+	pk, sk := convertor.NewKeyPair()
+	evilConf.PublicKey = pk
+	evilConf.SecretKey = sk
+
+	sender := NewGrpcConsensusSender(confs[0], ps)
+	evilSender := NewGrpcConsensusSender(&evilConf, ps)
+
+	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
+	for _, c := range []struct {
+		name   string
+		vote   model.VoteMessage
+		sender model.ConsensusSender
+		code   codes.Code
+		err    error
+	}{
+		{
+			"success case",
+			validVote,
+			sender,
+			codes.OK,
+			nil,
+		},
+		{
+			"failed case, authenticated but not peer",
+			validVote,
+			evilSender,
+			codes.PermissionDenied,
+			nil,
+		},
+		{
+			"failed case, invalid vote(un peer signed)",
+			unPeerValidVote,
+			sender,
+			codes.InvalidArgument,
+			nil,
+		},
+		{
+			"failed case, unsigned vote",
+			convertor.NewModelFactory().NewVoteMessage(RandomByte()),
+			sender,
+			codes.InvalidArgument,
+			nil,
+		},
+		{
+			"failed case, nil",
+			nil,
+			sender,
+			codes.Unauthenticated,
+			model.ErrInvalidVoteMessage,
+		},
+		{
+			"failed case, duplicate sent",
+			validVote,
+			sender,
+			codes.AlreadyExists,
+			nil,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.sender.Vote(c.vote)
+			if c.err != nil {
+				assert.EqualError(t, errors.Cause(err), c.err.Error())
+			} else if c.code != codes.OK {
+				MultiValidateStatusCode(t, err, c.code)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
+	for _, s := range servers {
+		s.GracefulStop()
+	}
+}
+
+func TestGrpcConsensusSender_PreCommit(t *testing.T) {
+	confs := []*config.BBFTConfig{
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+		GetTestConfig(),
+	}
+	confs[0].Port = "50053"
+	confs[1].Port = "50054"
+	confs[2].Port = "50055"
+	confs[3].Port = "50056"
+
+	ps := dba.NewPeerServiceOnMemory()
+	for _, conf := range confs {
+		ps.AddPeer(RandomPeerFromConf(conf))
+	}
+
+	servers := make([]*grpc.Server, 0, 4)
+	for i, conf := range confs {
+		servers = append(servers, NewTestGrpcServer())
+		go func(conf *config.BBFTConfig, server *grpc.Server) {
+			SetUpTestServer(t, conf, ps, server)
+		}(conf, servers[i])
+	}
+
+	validVote := RandomVoteMessageFromPeer(t, ps.GetPeers()[0])
+	unPeerValidVote := RandomVoteMessage(t)
+
+	evilConf := *confs[0]
+	pk, sk := convertor.NewKeyPair()
+	evilConf.PublicKey = pk
+	evilConf.SecretKey = sk
+
+	sender := NewGrpcConsensusSender(confs[0], ps)
+	evilSender := NewGrpcConsensusSender(&evilConf, ps)
+
+	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
+	for _, c := range []struct {
+		name   string
+		vote   model.VoteMessage
+		sender model.ConsensusSender
+		code   codes.Code
+		err    error
+	}{
+		{
+			"success case",
+			validVote,
+			sender,
+			codes.OK,
+			nil,
+		},
+		{
+			"failed case, authenticated but not peer",
+			validVote,
+			evilSender,
+			codes.PermissionDenied,
+			nil,
+		},
+		{
+			"failed case, invalid vote(un peer signed)",
+			unPeerValidVote,
+			sender,
+			codes.InvalidArgument,
+			nil,
+		},
+		{
+			"failed case, unsigned vote",
+			convertor.NewModelFactory().NewVoteMessage(RandomByte()),
+			sender,
+			codes.InvalidArgument,
+			nil,
+		},
+		{
+			"failed case, nil",
+			nil,
+			sender,
+			codes.Unauthenticated,
+			model.ErrInvalidVoteMessage,
+		},
+		{
+			"failed case, duplicate sent",
+			validVote,
+			sender,
+			codes.AlreadyExists,
+			nil,
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.sender.PreCommit(c.vote)
+			if c.err != nil {
+				assert.EqualError(t, errors.Cause(err), c.err.Error())
+			} else if c.code != codes.OK {
+				MultiValidateStatusCode(t, err, c.code)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+
+	for _, s := range servers {
+		s.GracefulStop()
+	}
+}

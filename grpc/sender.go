@@ -137,14 +137,76 @@ func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
 }
 
 func (s *GrpcConsensusSender) Vote(vote model.VoteMessage) error {
-	if _, ok := vote.(*VoteMessage); !ok {
+	if proto, ok := vote.(*VoteMessage); ok {
+		ctx, err := NewContextByProtobuf(s.conf, proto)
+		if err != nil {
+			return err
+		}
+
+		// BroadCast to All Peer in PeerService
+		clientChan := make(chan bbft.ConsensusGateClient)
+		go func() {
+			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		}()
+
+		var errs error
+		mutex := &sync.Mutex{}
+		waiter := &sync.WaitGroup{}
+		for client := range clientChan {
+			waiter.Add(1)
+			go func(c bbft.ConsensusGateClient) {
+				if _, err := c.Vote(ctx, proto.VoteMessage); err != nil {
+					fmt.Println("Failed Propose Error : ", err.Error())
+					mutex.Lock()
+					errs = multierr.Append(errs, err)
+					mutex.Unlock()
+				}
+				waiter.Done()
+			}(client)
+		}
+		waiter.Wait()
+		if errs != nil {
+			return errs
+		}
+	} else {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "vote can not cast to convertor.VoteMessage %#v", vote)
 	}
 	return nil
 }
 
 func (s *GrpcConsensusSender) PreCommit(vote model.VoteMessage) error {
-	if _, ok := vote.(*VoteMessage); !ok {
+	if proto, ok := vote.(*VoteMessage); ok {
+		ctx, err := NewContextByProtobuf(s.conf, proto)
+		if err != nil {
+			return err
+		}
+
+		// BroadCast to All Peer in PeerService
+		clientChan := make(chan bbft.ConsensusGateClient)
+		go func() {
+			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
+		}()
+
+		var errs error
+		mutex := &sync.Mutex{}
+		waiter := &sync.WaitGroup{}
+		for client := range clientChan {
+			waiter.Add(1)
+			go func(c bbft.ConsensusGateClient) {
+				if _, err := c.PreCommit(ctx, proto.VoteMessage); err != nil {
+					fmt.Println("Failed Propose Error : ", err.Error())
+					mutex.Lock()
+					errs = multierr.Append(errs, err)
+					mutex.Unlock()
+				}
+				waiter.Done()
+			}(client)
+		}
+		waiter.Wait()
+		if errs != nil {
+			return errs
+		}
+	} else {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "vote can not cast to convertor.VoteMessage %#v", vote)
 	}
 	return nil

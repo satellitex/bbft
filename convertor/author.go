@@ -2,7 +2,6 @@ package convertor
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/satellitex/bbft/config"
@@ -12,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"log"
 )
 
 var (
@@ -77,7 +77,7 @@ func AuthParamFromMD(ctx context.Context, header string) (string, error) {
 func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
 	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey)
 	if err != nil {
-		fmt.Println("Failed Auth FromMD pubkey: ", err)
+		log.Println("Failed Auth FromMD pubkey: ", err)
 		return nil, err
 	}
 	return []byte(pubStr), nil
@@ -86,7 +86,7 @@ func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
 func (a *Author) GetSignature(ctx context.Context) ([]byte, error) {
 	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature)
 	if err != nil {
-		fmt.Println("Failed Auth FromMD signature: ", err)
+		log.Println("Failed Auth FromMD signature: ", err)
 		return nil, err
 	}
 	return []byte(sigStr), nil

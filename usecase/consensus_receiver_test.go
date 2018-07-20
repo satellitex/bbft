@@ -117,6 +117,8 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
 	})
 
+	// TODO test fialed not leader pubkey
+
 	t.Run("DoS safety test", func(t *testing.T) {
 		waiter := &sync.WaitGroup{}
 		for i := 0; i < GetTestConfig().ReceiveProposeProposalPoolLimits*2; i++ {

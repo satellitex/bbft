@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
@@ -12,6 +13,7 @@ var (
 	ErrAlradyReceivedSameObject  = errors.New("Failed Alrady Received Same Object")
 	ErrVoteNotInPeerService      = errors.New("Failed vote's pubkey doesn't exist in peerService")
 	ErrPreCommitNotInPeerService = errors.New("Failed preCommit's pubkey doesn't exist in peerService")
+	ErrVerifyOnlyLeader          = errors.New("Failed not verified leader")
 )
 
 type ReceiveChannel struct {
@@ -96,12 +98,27 @@ func (c *ConsensusReceieverUsecase) Propagate(tx model.Transaction) error {
 	return result
 }
 
+func (c *ConsensusReceieverUsecase) verifyOnlyLeader(proposal model.Proposal) error {
+	height := proposal.GetBlock().GetHeader().GetHeight()
+	round := proposal.GetRound()
+	peers := c.ps.GetPermutationPeers(height)
+	if 0 <= round && round < int32(len(peers)) {
+		if !bytes.Equal(peers[round].GetPubkey(), proposal.GetBlock().GetSignature().GetPubkey()) {
+			return errors.New("not leader peer's signed")
+		}
+	}
+	return nil
+}
+
 func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	if proposal == nil { // InvalidArgument (code = 3)
 		return errors.Wrapf(model.ErrInvalidProposal, "proposal is nil")
 	}
 	if err := c.slv.BlockValidate(proposal.GetBlock()); err != nil { // InvalidArgument (code = 3)
 		return errors.Wrapf(model.ErrStatelessBlockValidate, err.Error())
+	}
+	if err := c.verifyOnlyLeader(proposal); err != nil { // InvalidArgument (code = 3)
+		return errors.Wrapf(ErrVerifyOnlyLeader, err.Error())
 	}
 	if c.pool.IsExistPropose(proposal) { // AlreadyExist (code = 6)
 		return errors.Wrapf(ErrAlradyReceivedSameObject, "proposal: %#v", proposal)

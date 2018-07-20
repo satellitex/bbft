@@ -59,6 +59,33 @@ func NewGrpcConsensusSender(conf *config.BBFTConfig, ps dba.PeerService) model.C
 	return sender
 }
 
+func (s *GrpcConsensusSender) broadCast(send func(bbft.ConsensusGateClient, chan error, *sync.WaitGroup)) error {
+	// BroadCast to All Peer in PeerService
+	clientChan := make(chan bbft.ConsensusGateClient)
+	peers := s.ps.GetPeers()
+	go func() {
+		s.manager.GetConnectsToChannel(peers, clientChan)
+	}()
+
+	errChan := make(chan error)
+	resultChan := make(chan error)
+	waiter := &sync.WaitGroup{}
+	go func() {
+		var errs error
+		for err := range errChan {
+			errs = multierr.Append(errs, err)
+		}
+		resultChan <- errs
+	}()
+	for client := range clientChan {
+		waiter.Add(1)
+		go send(client, errChan, waiter)
+	}
+	waiter.Wait()
+	close(errChan)
+	return <-resultChan
+}
+
 func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 	if proto, ok := tx.(*Transaction); ok {
 		ctx, err := NewContextByProtobuf(s.conf, proto)
@@ -67,29 +94,13 @@ func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 		}
 
 		// BroadCast to All Peer in PeerService
-		clientChan := make(chan bbft.ConsensusGateClient)
-		go func() {
-			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
-		}()
-
-		var errs error
-		mutex := &sync.Mutex{}
-		waiter := &sync.WaitGroup{}
-		for client := range clientChan {
-			waiter.Add(1)
-			go func(c bbft.ConsensusGateClient) {
+		return s.broadCast(
+			func(c bbft.ConsensusGateClient, errChan chan error, waiter *sync.WaitGroup) {
 				if _, err := c.Propagate(ctx, proto.Transaction); err != nil {
-					mutex.Lock()
-					errs = multierr.Append(errs, err)
-					mutex.Unlock()
+					errChan <- err
 				}
 				waiter.Done()
-			}(client)
-		}
-		waiter.Wait()
-		if errs != nil {
-			return errs
-		}
+			})
 	} else {
 		return errors.Wrapf(model.ErrInvalidTransaction, "tx can not cast convertor.Transaction: %#v", tx)
 	}
@@ -105,29 +116,13 @@ func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
 		}
 
 		// BroadCast to All Peer in PeerService
-		clientChan := make(chan bbft.ConsensusGateClient)
-		go func() {
-			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
-		}()
-
-		var errs error
-		mutex := &sync.Mutex{}
-		waiter := &sync.WaitGroup{}
-		for client := range clientChan {
-			waiter.Add(1)
-			go func(c bbft.ConsensusGateClient) {
+		return s.broadCast(
+			func(c bbft.ConsensusGateClient, errChan chan error, waiter *sync.WaitGroup) {
 				if _, err := c.Propose(ctx, proto.Proposal); err != nil {
-					mutex.Lock()
-					errs = multierr.Append(errs, err)
-					mutex.Unlock()
+					errChan <- err
 				}
 				waiter.Done()
-			}(client)
-		}
-		waiter.Wait()
-		if errs != nil {
-			return errs
-		}
+			})
 	} else {
 		return errors.Wrapf(model.ErrInvalidProposal, "proposal can not cast convertor.Proposal: %#v", proposal)
 	}
@@ -142,29 +137,13 @@ func (s *GrpcConsensusSender) Vote(vote model.VoteMessage) error {
 		}
 
 		// BroadCast to All Peer in PeerService
-		clientChan := make(chan bbft.ConsensusGateClient)
-		go func() {
-			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
-		}()
-
-		var errs error
-		mutex := &sync.Mutex{}
-		waiter := &sync.WaitGroup{}
-		for client := range clientChan {
-			waiter.Add(1)
-			go func(c bbft.ConsensusGateClient) {
+		return s.broadCast(
+			func(c bbft.ConsensusGateClient, errChan chan error, waiter *sync.WaitGroup) {
 				if _, err := c.Vote(ctx, proto.VoteMessage); err != nil {
-					mutex.Lock()
-					errs = multierr.Append(errs, err)
-					mutex.Unlock()
+					errChan <- err
 				}
 				waiter.Done()
-			}(client)
-		}
-		waiter.Wait()
-		if errs != nil {
-			return errs
-		}
+			})
 	} else {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "vote can not cast to convertor.VoteMessage %#v", vote)
 	}
@@ -179,29 +158,13 @@ func (s *GrpcConsensusSender) PreCommit(vote model.VoteMessage) error {
 		}
 
 		// BroadCast to All Peer in PeerService
-		clientChan := make(chan bbft.ConsensusGateClient)
-		go func() {
-			s.manager.GetConnectsToChannel(s.ps.GetPeers(), clientChan)
-		}()
-
-		var errs error
-		mutex := &sync.Mutex{}
-		waiter := &sync.WaitGroup{}
-		for client := range clientChan {
-			waiter.Add(1)
-			go func(c bbft.ConsensusGateClient) {
+		return s.broadCast(
+			func(c bbft.ConsensusGateClient, errChan chan error, waiter *sync.WaitGroup) {
 				if _, err := c.PreCommit(ctx, proto.VoteMessage); err != nil {
-					mutex.Lock()
-					errs = multierr.Append(errs, err)
-					mutex.Unlock()
+					errChan <- err
 				}
 				waiter.Done()
-			}(client)
-		}
-		waiter.Wait()
-		if errs != nil {
-			return errs
-		}
+			})
 	} else {
 		return errors.Wrapf(model.ErrInvalidVoteMessage, "vote can not cast to convertor.VoteMessage %#v", vote)
 	}

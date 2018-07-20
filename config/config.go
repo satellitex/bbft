@@ -24,7 +24,7 @@ type BBFTConfig struct {
 	AllowedConnectDelayTime      time.Duration `default:"100ms"`
 	ProposeMaxCalcTime           time.Duration `default:"500ms"`
 	VoteMaxCalcTime              time.Duration `default:"1s"`
-	PreCommitMaxCalcTime         time.Duration `default:"100ms"`
+	PreCommitMaxCalcTime         time.Duration `default:"200ms"`
 	CommitMaxCalcTime            time.Duration `default:"500ms"`
 
 	Demo Demo

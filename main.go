@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/grpc-ecosystem/go-grpc-middleware/tags"
@@ -16,6 +15,7 @@ import (
 	"github.com/satellitex/bbft/proto"
 	"github.com/satellitex/bbft/usecase"
 	"google.golang.org/grpc"
+	"log"
 	"net"
 	"os"
 	"time"
@@ -64,7 +64,7 @@ func OnceNodeGenesis(conf *config.BBFTConfig, factory model.ModelFactory, bc dba
 
 func main() {
 
-	fmt.Println("=========================== boot bbft ===========================")
+	log.Println("=========================== boot bbft ===========================")
 
 	config.Init()
 	conf := config.GetConfig()
@@ -73,7 +73,7 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Println("Succcess New Listen")
+	log.Println("Succcess New Listen")
 
 	ps := dba.NewPeerServiceOnMemory()
 	author := convertor.NewAuthor(ps)
@@ -88,7 +88,7 @@ func main() {
 
 	consensusReceiver := usecase.NewConsensusReceiverUsecase(queue, ps, lock, pool, bc, slv, sender, receivChan)
 	clientRceiver := usecase.NewClientGateReceiverUsecase(slv, sender)
-	fmt.Println("Success New Receivers")
+	log.Println("Success New Receivers")
 
 	s := grpc.NewServer([]grpc.ServerOption{
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
@@ -97,13 +97,13 @@ func main() {
 			grpc_recovery.UnaryServerInterceptor(),
 		)),
 	}...)
-	fmt.Println("Success New Server")
+	log.Println("Success New Server")
 
 	bbft.RegisterConsensusGateServer(s, controller.NewConsensusController(consensusReceiver, author))
 	bbft.RegisterTxGateServer(s, controller.NewClientGateController(clientRceiver, author))
-	fmt.Println("Success New Register Endpoint")
+	log.Println("Success New Register Endpoint")
 
-	fmt.Println("Set Up!!")
+	log.Println("Set Up!!")
 
 	sfv := convertor.NewStatefulValidator(bc)
 	factory := convertor.NewModelFactory()
@@ -123,7 +123,7 @@ func main() {
 	}()
 
 	if err := s.Serve(l); err != nil {
-		fmt.Println("Failed to server grpc: ", err.Error())
+		log.Println("Failed to server grpc: ", err.Error())
 	}
 
 }

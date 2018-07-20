@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	. "github.com/satellitex/bbft/convertor"
@@ -11,6 +10,7 @@ import (
 	"go.uber.org/multierr"
 	"google.golang.org/grpc"
 	"sync"
+	"log"
 )
 
 type GrpcConnectionManager struct {
@@ -39,7 +39,7 @@ func (m *GrpcConnectionManager) GetConnectsToChannel(peers []model.Peer, ret cha
 			ret <- client
 		} else {
 			if err := m.CreateConn(p); err != nil {
-				fmt.Println("Error Connection to peer: ", p)
+				log.Println("Error Connection to peer: ", p)
 				return
 			}
 			ret <- m.clients[p.GetAddress()]

@@ -3,7 +3,6 @@ package usecase
 import (
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/model"
-	"log"
 )
 
 type ClientGateReceiver interface {
@@ -28,7 +27,7 @@ func (c *ClientGateReceiverUsecase) Gate(tx model.Transaction) error {
 	}
 	err := c.sender.Propagate(tx)
 	if err != nil {
-		log.Println(model.ErrConsensusSenderPropagate, err)
+		//log.Println(model.ErrConsensusSenderPropagate, err)
 	}
 	return nil
 }

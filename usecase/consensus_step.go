@@ -364,6 +364,6 @@ func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 		return errors.Wrapf(ErrConsensusCommit, err.Error())
 	}
 	c.bc.Commit(block)
-	log.Println("Commited Block: ", block)
+	log.Println("Commited Block: ", model.MustGetHash(block), ", txSize:", len(block.GetTransactions()))
 	return nil
 }

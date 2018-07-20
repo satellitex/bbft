@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/model"
+	"log"
 	"sync"
 )
 
@@ -53,6 +54,7 @@ func (q *ProposalTxQueueOnMemory) Push(tx model.Transaction) error {
 		q.findTx[string(hash)] = tx
 		q.queue = append(q.queue, tx)
 	} else {
+		log.Print(ErrProposalTxQueueLimits, "queue's max length: ", q.limit)
 		return errors.Wrapf(ErrProposalTxQueueLimits, "queue's max length: %d", q.limit)
 	}
 	return nil

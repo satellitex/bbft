@@ -244,6 +244,9 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 				if err := c.slv.TxValidate(tx); err != nil {
 					continue
 				}
+				if _, ok := c.bc.FindTx(model.MustGetHash(tx)); ok {
+					continue // Already Exist Transaction
+				}
 				txs = append(txs, tx)
 			}
 			top, ok := c.bc.Top()

@@ -10,14 +10,14 @@ type BBFTConfig struct {
 	Port                                  string `default:"50053"`
 	PublicKey                             []byte
 	SecretKey                             []byte
-	QueueLimits                           int `default:"1000"`
+	QueueLimits                           int `default:"5000"`
 	LockedRegisteredLimits                int `default:"1000"`
-	LockedVotedLimits                     int `default:"5000"`
-	ReceivePropagateTxPoolLimits          int `default:"3000"`
-	ReceiveProposeProposalPoolLimits      int `default:"100"`
-	ReceiveVoteVoteMessagePoolLimits      int `default:"100"`
-	ReceivePreCommitVoteMessagePoolLimits int `default:"100"`
-	PreCommitFinderLimits                 int `default:"100"`
+	LockedVotedLimits                     int `default:"3000"`
+	ReceivePropagateTxPoolLimits          int `default:"5000"`
+	ReceiveProposeProposalPoolLimits      int `default:"500"`
+	ReceiveVoteVoteMessagePoolLimits      int `default:"500"`
+	ReceivePreCommitVoteMessagePoolLimits int `default:"500"`
+	PreCommitFinderLimits                 int `default:"500"`
 
 	// Consensus Parameter
 	NumberOfBlockHasTransactions int           `default:"1000"`

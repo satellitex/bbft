@@ -9,8 +9,8 @@ import (
 	"github.com/satellitex/bbft/proto"
 	"go.uber.org/multierr"
 	"google.golang.org/grpc"
-	"sync"
 	"log"
+	"sync"
 )
 
 type GrpcConnectionManager struct {

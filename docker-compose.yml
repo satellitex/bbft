@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  bbft_1:
+    container_name: bbft_1
+    # You can use images of any branch by using tags
+    image: satellitex/bbft-runner:feature/demo
+    ports:
+      - 50050:50050
+    environment:
+        BBFT_PORT: 50050
+
+  bbft_2:
+    container_name: bbft_2
+    # You can use images of any branch by using tags
+    image: .
+    ports:
+      - 50051:50051
+    environment:
+        BBFT_PORT: 50051

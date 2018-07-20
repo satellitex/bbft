@@ -72,29 +72,6 @@ func NewTestGrpcServer() *grpc.Server {
 	}...)
 }
 
-type TxGateSender struct {
-	client bbft.TxGateClient
-	t      *testing.T
-}
-
-func (s *TxGateSender) Write(ctx context.Context, tx model.Transaction) error {
-	ptx := tx.(*convertor.Transaction).Transaction
-	res, err := s.client.Write(ctx, ptx)
-	if err == nil {
-		require.Equal(s.t, &bbft.TxResponse{}, res)
-	}
-	return err
-}
-
-func NewTxGateSender(t *testing.T, conf *config.BBFTConfig) *TxGateSender {
-	conn, err := grpc.Dial(conf.Host+":"+conf.Port, grpc.WithInsecure())
-	require.NoError(t, err)
-	return &TxGateSender{
-		bbft.NewTxGateClient(conn),
-		t,
-	}
-}
-
 func TestTxGateWrite(t *testing.T) {
 	conf := GetTestConfig()
 	ps := dba.NewPeerServiceOnMemory()

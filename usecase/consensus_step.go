@@ -2,11 +2,11 @@ package usecase
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
 	"github.com/satellitex/bbft/model"
+	"log"
 	"math"
 	"time"
 )
@@ -171,7 +171,7 @@ var (
 
 // Runnning Consensus Endless...
 func (c *ConsensusStepUsecase) Run() {
-	fmt.Println("============== Running Consensus!! ==============")
+	log.Println("============== Running Consensus!! ==============")
 	for {
 		top, ok := c.bc.Top()
 		if !ok {
@@ -183,14 +183,14 @@ func (c *ConsensusStepUsecase) Run() {
 		} else {
 			c.RoundStartTime = time.Duration(top.GetHeader().GetCreatedTime())
 		}
-		fmt.Println("============== Running Consensus!! ============== height:", height)
+		log.Println("============== Running Consensus!! ============== height:", height)
 		for {
 
 			timer := time.NewTimer(c.RoundStartTime - time.Duration(Now()))
 			<-timer.C
 
 			round++
-			fmt.Println("============== Running Consensus!! ============== round:", round)
+			log.Println("============== Running Consensus!! ============== round:", round)
 
 			// each Phase TimeOut Calc
 			c.ProposeTimeOut = c.RoundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
@@ -198,25 +198,25 @@ func (c *ConsensusStepUsecase) Run() {
 			c.PreCommitTimeOut = c.VoteTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
 			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
 
-			fmt.Println("=============== ProposePhase ===============")
+			log.Println("=============== ProposePhase ===============")
 			if err := c.Propose(height, round); err != nil {
-				fmt.Println("Consensus ProposePhase Error!!",
+				log.Println("Consensus ProposePhase Error!!",
 					"height:", height,
 					"round:", round,
 					err)
 			}
 
-			fmt.Println("=============== VotePhase ===============")
+			log.Println("=============== VotePhase ===============")
 			if err := c.Vote(height, round); err != nil {
-				fmt.Println("Consensus VotePhase Error!!",
+				log.Println("Consensus VotePhase Error!!",
 					"height:", height,
 					"round:", round,
 					err)
 			}
 
-			fmt.Println("=============== PreCommitPhase ===============")
+			log.Println("=============== PreCommitPhase ===============")
 			if err := c.PreCommit(height, round); err != nil {
-				fmt.Println("Consensus PreCommitPhase Error!!",
+				log.Println("Consensus PreCommitPhase Error!!",
 					"height:", height,
 					"round:", round,
 					err)
@@ -225,7 +225,7 @@ func (c *ConsensusStepUsecase) Run() {
 			}
 			c.RoundStartTime = c.PreCommitTimeOut
 		}
-		fmt.Println("============== Commit!! ==============")
+		log.Println("============== Commit!! ==============")
 		c.Commit(height, round)
 	}
 }
@@ -234,7 +234,7 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
 			// Leader is me
-			fmt.Println("ProposePhase : Leader is Me")
+			log.Println("ProposePhase : Leader is Me")
 			txs := make([]model.Transaction, 0, c.conf.NumberOfBlockHasTransactions)
 			for len(txs) < c.conf.NumberOfBlockHasTransactions {
 				tx, ok := c.queue.Pop()
@@ -262,7 +262,7 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 
 			c.ThisRoundProposal = proposal
 			if err = c.sender.Propose(proposal); err != nil {
-				fmt.Println(err)
+				//log.Println(err)
 			}
 		} else {
 			// Leader is not me
@@ -294,14 +294,14 @@ func (c *ConsensusStepUsecase) Vote(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if c.ThisRoundProposal != nil {
 			if err := c.slv.BlockValidate(c.ThisRoundProposal.GetBlock()); err != nil {
-				fmt.Printf("Height: %d, Round: %d, proposal StatelessInvalid: %s\n", height, round, err.Error())
+				log.Printf("Height: %d, Round: %d, proposal StatelessInvalid: %s\n", height, round, err.Error())
 			} else if err := c.sfv.Validate(c.ThisRoundProposal.GetBlock()); err != nil {
-				fmt.Printf("Height: %d, Round: %d, proposal StatefulInvalid: %s\n", height, round, err.Error())
+				log.Printf("Height: %d, Round: %d, proposal StatefulInvalid: %s\n", height, round, err.Error())
 			} else {
 				vote := c.factory.NewVoteMessage(model.MustGetHash(c.ThisRoundProposal.GetBlock()))
 				vote.Sign(c.conf.PublicKey, c.conf.SecretKey)
 				if err := c.sender.Vote(vote); err != nil {
-					fmt.Println(err)
+					//log.Println(err)
 				}
 			}
 		}
@@ -332,7 +332,7 @@ func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 		vote := c.factory.NewVoteMessage(model.MustGetHash(proposal.GetBlock()))
 		vote.Sign(c.conf.PublicKey, c.conf.SecretKey)
 		if err := c.sender.PreCommit(vote); err != nil {
-			fmt.Println(err)
+			//log.Println(err)
 		}
 	}
 	timer := time.NewTimer(c.PreCommitTimeOut - time.Duration(Now()))
@@ -364,6 +364,6 @@ func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 		return errors.Wrapf(ErrConsensusCommit, err.Error())
 	}
 	c.bc.Commit(block)
-	fmt.Println("Commited Block: ", block)
+	log.Println("Commited Block: ", block)
 	return nil
 }

@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
@@ -86,7 +85,7 @@ func (c *ConsensusReceieverUsecase) Propagate(tx model.Transaction) error {
 	}()
 	go func() {
 		if err := c.sender.Propagate(tx); err != nil {
-			fmt.Println(model.ErrConsensusSenderPropagate, err)
+			//log.Println(model.ErrConsensusSenderPropagate, err)
 		}
 		errs <- nil
 	}()
@@ -126,7 +125,7 @@ func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	}()
 	go func() {
 		if err := c.sender.Propose(proposal); err != nil {
-			fmt.Println(model.ErrConsensusSenderPropose, err)
+			//log.Println(model.ErrConsensusSenderPropose, err)
 		}
 		errs <- nil
 	}()
@@ -170,7 +169,7 @@ func (c *ConsensusReceieverUsecase) Vote(vote model.VoteMessage) error {
 	}()
 	go func() {
 		if err := c.sender.Vote(vote); err != nil {
-			fmt.Println(model.ErrConsensusSenderVote, err)
+			//log.Println(model.ErrConsensusSenderVote, err)
 		}
 		errs <- nil
 	}()
@@ -207,7 +206,7 @@ func (c *ConsensusReceieverUsecase) PreCommit(preCommit model.VoteMessage) error
 	}()
 	go func() {
 		if err := c.sender.PreCommit(preCommit); err != nil {
-			fmt.Println(model.ErrConsensusSenderPreCommit, err)
+			//log.Println(model.ErrConsensusSenderPreCommit, err)
 		}
 		errs <- nil
 	}()

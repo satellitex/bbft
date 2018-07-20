@@ -4,17 +4,79 @@ services:
   bbft_1:
     container_name: bbft_1
     # You can use images of any branch by using tags
-    image: satellitex/bbft-runner
-    ports:
-      - 50050:50050
-    environment:
-        BBFT_PORT: 50050
-
-  bbft_2:
-    container_name: bbft_2
-    # You can use images of any branch by using tags
-    image: satellitex/bbft-runner
+    image: satellitex/bbft-server
     ports:
       - 50051:50051
     environment:
         BBFT_PORT: 50051
+        DEMO: demo
+        BBFT_DEMO_PUBLICKEY: a2HnLTpKgQGWcMHtNpDFf7YLEpDjYgIiSLYEne4uho4=
+        BBFT_DEMO_SECRETKEY: ssZgm83l6QNiIgTPH5Pt/HAPpUJmx3RiNdJwRaGED6BrYectOkqBAZZwwe02kMV/tgsSkONiAiJItgSd7i6Gjg==
+        BBFT_DEMO_PORT1: 50051
+        BBFT_DEMO_PORT2: 50052
+        BBFT_DEMO_PORT3: 50053
+        BBFT_DEMO_PORT4: 50054
+        BBFT_DEMO_PUBKEY1: a2HnLTpKgQGWcMHtNpDFf7YLEpDjYgIiSLYEne4uho4=
+        BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
+        BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
+        BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+
+  bbft_2:
+    container_name: bbft_2
+    # You can use images of any branch by using tags
+    image: satellitex/bbft-server
+    ports:
+      - 50052:50052
+    environment:
+        BBFT_PORT: 50052
+        DEMO: demo
+        BBFT_DEMO_PUBLICKEY: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
+        BBFT_DEMO_SECRETKEY: p+QpnkYMTIrHalDEYLi3bZYxZcrLY0PMJFYrv/8N7e01KvNsmV52G0W6iCGse2R3h6k0Snic/odSC40h6dnuaA==
+        BBFT_DEMO_PORT1: 50051
+        BBFT_DEMO_PORT2: 50052
+        BBFT_DEMO_PORT3: 50053
+        BBFT_DEMO_PORT4: 50054
+        BBFT_DEMO_PUBKEY1: a2HnLTpKgQGWcMHtNpDFf7YLEpDjYgIiSLYEne4uho4=
+        BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
+        BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
+        BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+
+  bbft_3:
+    container_name: bbft_3
+    # You can use images of any branch by using tags
+    image: satellitex/bbft-server
+    ports:
+      - 50053:50053
+    environment:
+        BBFT_PORT: 50053
+        DEMO: demo
+        BBFT_DEMO_PUBLICKEY: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
+        BBFT_DEMO_SECRETKEY: Kg7CRyALTPIIglCpc1hTsGg4tajdh1G572UuBU2kHi2oFOblFJ40OxWV9TurMIZyvWO1yLPwkfXo64RCtQQ4QA==
+        BBFT_DEMO_PORT1: 50051
+        BBFT_DEMO_PORT2: 50052
+        BBFT_DEMO_PORT3: 50053
+        BBFT_DEMO_PORT4: 50054
+        BBFT_DEMO_PUBKEY1: a2HnLTpKgQGWcMHtNpDFf7YLEpDjYgIiSLYEne4uho4=
+        BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
+        BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
+        BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+
+  bbft_4:
+    container_name: bbft_4
+    # You can use images of any branch by using tags
+    image: satellitex/bbft-server
+    ports:
+      - 50054:50054
+    environment:
+        BBFT_PORT: 50054
+        DEMO: demo
+        BBFT_DEMO_PUBLICKEY: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+        BBFT_DEMO_SECRETKEY: tS8WYlEWg0MkyjPaYs2wKzHZLU1we1UVNiOy07xYS5Z1p14pqwkMO171H10/AtNV/ZCedN8sW7emOqvq3YhfbQ==
+        BBFT_DEMO_PORT1: 50051
+        BBFT_DEMO_PORT2: 50052
+        BBFT_DEMO_PORT3: 50053
+        BBFT_DEMO_PORT4: 50054
+        BBFT_DEMO_PUBKEY1: a2HnLTpKgQGWcMHtNpDFf7YLEpDjYgIiSLYEne4uho4=
+        BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
+        BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
+        BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=

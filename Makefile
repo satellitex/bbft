@@ -27,3 +27,8 @@ test-ci:
 .PHONY: build-sender
 build-sender:
 	go build -o ./bin/sender ./demo/sender.go
+
+.PHONY: push-docker-demo
+push-docker-demo: build-linux
+	docker build . -t satellitex/bbft-server
+	docker push satellitex/bbft-server

@@ -26,6 +26,8 @@ type BBFTConfig struct {
 	VoteMaxCalcTime              time.Duration `default:"2s"`
 	PreCommitMaxCalcTime         time.Duration `default:"500ms"`
 	CommitMaxCalcTime            time.Duration `default:"1s"`
+
+	Demo Demo
 }
 
 var config BBFTConfig

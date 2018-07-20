@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -16,14 +17,48 @@ import (
 	"github.com/satellitex/bbft/usecase"
 	"google.golang.org/grpc"
 	"net"
+	"os"
+	"time"
 )
 
+func DecodeString64(s string) []byte {
+	ret, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	return ret
+}
+
 func DemoGenesisCommit(conf *config.BBFTConfig, factory model.ModelFactory, bc dba.BlockChain, ps dba.PeerService) {
+
+	// myself addPeer
+	conf.PublicKey = DecodeString64(conf.Demo.PublicKey)
+	conf.SecretKey = DecodeString64(conf.Demo.SecretKey)
+
+	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port1, DecodeString64(conf.Demo.Pubkey1)))
+	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port2, DecodeString64(conf.Demo.Pubkey2)))
+	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port3, DecodeString64(conf.Demo.Pubkey3)))
+	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port4, DecodeString64(conf.Demo.Pubkey4)))
+
 	genesisBlock, err := factory.NewBlock(0, nil, 0, nil)
 	if err != nil {
 		panic("DemoGenesisCommit: " + err.Error())
 	}
+
+	bc.Commit(genesisBlock)
+}
+
+func OnceNodeGenesis(conf *config.BBFTConfig, factory model.ModelFactory, bc dba.BlockChain, ps dba.PeerService) {
+
+	// myself addPeer
+	conf.PublicKey, conf.SecretKey = convertor.NewKeyPair()
 	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Port, conf.PublicKey))
+
+	genesisBlock, err := factory.NewBlock(0, nil, 0, nil)
+	if err != nil {
+		panic("DemoGenesisCommit: " + err.Error())
+	}
+
 	bc.Commit(genesisBlock)
 }
 
@@ -33,7 +68,6 @@ func main() {
 
 	config.Init()
 	conf := config.GetConfig()
-	conf.PublicKey, conf.SecretKey = convertor.NewKeyPair()
 
 	l, err := net.Listen("tcp", ":"+conf.Port)
 	if err != nil {
@@ -75,7 +109,13 @@ func main() {
 	factory := convertor.NewModelFactory()
 
 	consensus := usecase.NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, receivChan)
-	DemoGenesisCommit(conf, factory, bc, ps)
+
+	if os.Getenv("DEMO") != "" {
+		time.Sleep(time.Second*2)
+		DemoGenesisCommit(conf, factory, bc, ps)
+	} else {
+		OnceNodeGenesis(conf, factory, bc, ps)
+	}
 
 	// Consensus Run!!
 	go func() {

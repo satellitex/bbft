@@ -10,6 +10,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"math/rand"
+	"time"
+	"encoding/base64"
 )
 
 func NewTxGateClient(conf *config.BBFTConfig) bbft.TxGateClient {
@@ -23,10 +25,13 @@ func NewTxGateClient(conf *config.BBFTConfig) bbft.TxGateClient {
 func main() {
 	conf := GetTestConfig()
 
+	fmt.Println(base64.StdEncoding.EncodeToString(conf.PublicKey))
+	fmt.Println(base64.StdEncoding.EncodeToString(conf.SecretKey))
+
 	client := NewTxGateClient(conf)
 	rand.Seed(usecase.Now())
 
-	for i := 0; i < 100; i++ {
+	for i := 0; ; i++ {
 		tx, err := convertor.NewTxModelBuilder().Message(fmt.Sprintf(RandomStr()+"Messageid: %d", i)).Sign(conf.PublicKey, conf.SecretKey).Build()
 		if err != nil {
 			fmt.Println(err)
@@ -38,5 +43,6 @@ func main() {
 		} else {
 			fmt.Println("success! ", i)
 		}
+		time.Sleep(time.Second)
 	}
 }

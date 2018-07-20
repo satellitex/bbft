@@ -10,3 +10,16 @@ Blockchain Byzantine Fault Torelance Consensus Algorithm based PBFT.
 ```
 $ glide install
 ```
+
+## Demo
+
+### Demo Server SetUp : (4 Peers)
+```
+$ docker-compose up
+```
+
+### Demo Transaction Send
+```
+$ make build-sender
+$ ./bin/sender
+```

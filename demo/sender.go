@@ -43,6 +43,6 @@ func main() {
 		} else {
 			fmt.Println("success! ", i)
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond)
 	}
 }

@@ -1,35 +1,42 @@
-package demo
+package main
 
 import (
+	"fmt"
+	"github.com/satellitex/bbft/config"
+	"github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/proto"
 	. "github.com/satellitex/bbft/test_utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/satellitex/bbft/usecase"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/codes"
-	"sync"
-	"testing"
+	"google.golang.org/grpc"
+	"math/rand"
 )
 
-func TestTxGateWrite(t *testing.T) {
+func NewTxGateClient(conf *config.BBFTConfig) bbft.TxGateClient {
+	conn, err := grpc.Dial(conf.Host+":"+conf.Port, grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+	return bbft.NewTxGateClient(conn)
+}
+
+func main() {
 	conf := GetTestConfig()
 
-	sender := NewTxGateSender(t, conf)
+	client := NewTxGateClient(conf)
+	rand.Seed(usecase.Now())
 
-	tx := RandomValidTx(t)
-	err := sender.Write(context.TODO(), tx)
-	assert.NoError(t, err)
-
-	tx = RandomInvalidTx(t)
-	err = sender.Write(context.TODO(), tx)
-	ValidateStatusCode(t, err, codes.InvalidArgument)
-
-	waiter := &sync.WaitGroup{}
 	for i := 0; i < 100; i++ {
-		waiter.Add(1)
-		go func() {
-			err := sender.Write(context.TODO(), RandomValidTx(t))
-			assert.NoError(t, err)
-			waiter.Done()
-		}()
+		tx, err := convertor.NewTxModelBuilder().Message(fmt.Sprintf(RandomStr()+"Messageid: %d", i)).Sign(conf.PublicKey, conf.SecretKey).Build()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		_, err = client.Write(context.TODO(), tx.(*convertor.Transaction).Transaction)
+		if err != nil {
+			fmt.Println("failed!  ", i, err)
+		} else {
+			fmt.Println("success! ", i)
+		}
 	}
-	waiter.Wait()
 }

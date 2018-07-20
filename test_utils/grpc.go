@@ -1,14 +1,14 @@
 package test_utils
 
 import (
-	"github.com/satellitex/bbft/proto"
-	"testing"
-	"github.com/satellitex/bbft/model"
-	"github.com/satellitex/bbft/convertor"
-	"github.com/stretchr/testify/require"
 	"github.com/satellitex/bbft/config"
-	"google.golang.org/grpc"
+	"github.com/satellitex/bbft/convertor"
+	"github.com/satellitex/bbft/model"
+	"github.com/satellitex/bbft/proto"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"testing"
 )
 
 type TxGateSender struct {
@@ -33,4 +33,3 @@ func NewTxGateSender(t *testing.T, conf *config.BBFTConfig) *TxGateSender {
 		t,
 	}
 }
-

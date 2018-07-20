@@ -178,13 +178,17 @@ func (c *ConsensusStepUsecase) Run() {
 			panic("Unexpected Error No BlockChain Top")
 		}
 		height, round := top.GetHeader().GetHeight()+1, int32(-1)
-		if height == 0 {
+		if height == 1 {
 			c.RoundStartTime = time.Duration(Now())
 		} else {
 			c.RoundStartTime = time.Duration(top.GetHeader().GetCreatedTime())
 		}
 		fmt.Println("============== Running Consensus!! ============== height:", height)
 		for {
+
+			timer := time.NewTimer(c.RoundStartTime - time.Duration(Now()))
+			<-timer.C
+
 			round++
 			fmt.Println("============== Running Consensus!! ============== round:", round)
 
@@ -335,7 +339,7 @@ func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 		case propose := <-c.channel.Propose:
 			c.proposalFinder.Set(propose)
 		case <-c.channel.Vote:
-			break
+			continue
 		case preCommit := <-c.channel.PreCommit:
 			c.preCommitFinder.Set(preCommit)
 			if _, ok := c.preCommitFinder.Get(); ok {
@@ -356,5 +360,6 @@ func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 		return errors.Wrapf(ErrConsensusCommit, err.Error())
 	}
 	c.bc.Commit(block)
+	fmt.Println("Commited Block: ", block)
 	return nil
 }

@@ -23,3 +23,7 @@ test:
 .PHONY: test-ci
 test-ci:
 	go test -v $(shell glide novendor)
+
+.PHONY: build-sender
+build-sender:
+	go build -o ./bin/sender ./demo/sender.go

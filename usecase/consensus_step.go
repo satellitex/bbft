@@ -171,6 +171,7 @@ var (
 
 // Runnning Consensus Endless...
 func (c *ConsensusStepUsecase) Run() {
+	fmt.Println("============== Running Consensus!! ==============")
 	for {
 		top, ok := c.bc.Top()
 		if !ok {
@@ -178,8 +179,10 @@ func (c *ConsensusStepUsecase) Run() {
 		}
 		c.RoundStartTime = time.Duration(top.GetHeader().GetCommitTime())
 		height, round := top.GetHeader().GetHeight(), int32(-1)
+		fmt.Println("============== Running Consensus!! ============== height:", height)
 		for {
 			round++
+			fmt.Println("============== Running Consensus!! ============== round:", round)
 
 			// each Phase TimeOut Calc
 			c.ProposeTimeOut = c.RoundStartTime + c.conf.ProposeMaxCalcTime + c.conf.AllowedConnectDelayTime
@@ -202,6 +205,7 @@ func (c *ConsensusStepUsecase) Run() {
 			}
 			c.RoundStartTime = c.PreCommitTimeOut
 		}
+		fmt.Println("============== Commit!! ==============")
 		c.Commit(height, round)
 	}
 }

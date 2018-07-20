@@ -10,6 +10,7 @@ import (
 	"github.com/satellitex/bbft/controller"
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/dba"
+	. "github.com/satellitex/bbft/grpc"
 	"github.com/satellitex/bbft/proto"
 	"github.com/satellitex/bbft/usecase"
 	"google.golang.org/grpc"
@@ -37,7 +38,7 @@ func main() {
 	pool := dba.NewReceiverPoolOnMemory(conf)
 	bc := dba.NewBlockChainOnMemory()
 	slv := convertor.NewStatelessValidator()
-	sender := convertor.NewMockConsensusSender() // WIP
+	sender := NewGrpcConsensusSender(conf, ps)
 	receivChan := usecase.NewReceiveChannel(conf)
 
 	consensusReceiver := usecase.NewConsensusReceiverUsecase(queue, ps, lock, pool, bc, slv, sender, receivChan)
@@ -58,6 +59,16 @@ func main() {
 	fmt.Println("Success New Register Endpoint")
 
 	fmt.Println("Set Up!!")
+
+	sfv := convertor.NewStatefulValidator(bc)
+	factory := convertor.NewModelFactory()
+
+	consensus := usecase.NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, receivChan)
+
+	// Consensus Run!!
+	go func() {
+		consensus.Run()
+	}()
 
 	if err := s.Serve(l); err != nil {
 		fmt.Printf("Failed to server grpc: %s", err.Error())

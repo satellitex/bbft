@@ -10,6 +10,7 @@ import (
 	"go.uber.org/multierr"
 	"google.golang.org/grpc"
 	"log"
+	"math/rand"
 	"sync"
 )
 
@@ -109,6 +110,12 @@ func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 }
 
 func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
+	evilBlock, _ := NewModelFactory().NewBlock(proposal.GetBlock().GetHeader().GetHeight(),
+		proposal.GetBlock().GetHeader().GetPreBlockHash(),
+		proposal.GetBlock().GetHeader().GetCreatedTime()+1,
+		proposal.GetBlock().GetTransactions())
+	evilProposal, _ := NewModelFactory().NewProposal(evilBlock, proposal.GetRound())
+	evilProto, _ := evilProposal.(*Proposal)
 	if proto, ok := proposal.(*Proposal); ok {
 		ctx, err := NewContextByProtobuf(s.conf, proto)
 		if err != nil {
@@ -118,8 +125,16 @@ func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
 		// BroadCast to All Peer in PeerService
 		return s.broadCast(
 			func(c bbft.ConsensusGateClient, errChan chan error, waiter *sync.WaitGroup) {
-				if _, err := c.Propose(ctx, proto.Proposal); err != nil {
-					errChan <- err
+				if rand.Int()%2 == 0 {
+					log.Println("Evil Propose Pettern NormalProto!!!!!")
+					if _, err := c.Propose(ctx, proto.Proposal); err != nil {
+						errChan <- err
+					}
+				} else {
+					log.Println("Evil Propose Pettern EvilProto!!!!!")
+					if _, err := c.Propose(ctx, evilProto.Proposal); err != nil {
+						errChan <- err
+					}
 				}
 				waiter.Done()
 			})

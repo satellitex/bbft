@@ -4,7 +4,7 @@ services:
   bbft_1:
     container_name: bbft_1
     # You can use images of any branch by using tags
-    image: satellitex/bbft-server
+    image: satellitex/bbft-server:evil
     ports:
       - 50051:50051
       - 8081:8080

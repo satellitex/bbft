@@ -32,3 +32,8 @@ build-sender:
 push-docker-demo: build-linux
 	docker build . -t satellitex/bbft-server
 	docker push satellitex/bbft-server
+
+.PHONY: evil-push-docker-demo
+evil-push-docker-demo: build-linux
+	docker build . -t satellitex/bbft-server:evil
+	docker push satellitex/bbft-server:evil

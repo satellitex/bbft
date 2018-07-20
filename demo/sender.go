@@ -35,7 +35,7 @@ func main() {
 		tx, err := convertor.NewTxModelBuilder().Message(fmt.Sprintf(RandomStr()+"Messageid: %d", i)).Sign(conf.PublicKey, conf.SecretKey).Build()
 		if err != nil {
 			fmt.Println(err)
-			continue
+			return
 		}
 		_, err = client.Write(context.TODO(), tx.(*convertor.Transaction).Transaction)
 		if err != nil {

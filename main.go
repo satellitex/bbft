@@ -11,11 +11,21 @@ import (
 	"github.com/satellitex/bbft/convertor"
 	"github.com/satellitex/bbft/dba"
 	. "github.com/satellitex/bbft/grpc"
+	"github.com/satellitex/bbft/model"
 	"github.com/satellitex/bbft/proto"
 	"github.com/satellitex/bbft/usecase"
 	"google.golang.org/grpc"
 	"net"
 )
+
+func DemoGenesisCommit(conf *config.BBFTConfig, factory model.ModelFactory, bc dba.BlockChain, ps dba.PeerService) {
+	genesisBlock, err := factory.NewBlock(0, nil, 0, nil)
+	if err != nil {
+		panic("DemoGenesisCommit: " + err.Error())
+	}
+	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Port, conf.PublicKey))
+	bc.Commit(genesisBlock)
+}
 
 func main() {
 
@@ -23,6 +33,7 @@ func main() {
 
 	config.Init()
 	conf := config.GetConfig()
+	conf.PublicKey, conf.SecretKey = convertor.NewKeyPair()
 
 	l, err := net.Listen("tcp", ":"+conf.Port)
 	if err != nil {
@@ -64,6 +75,7 @@ func main() {
 	factory := convertor.NewModelFactory()
 
 	consensus := usecase.NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, receivChan)
+	DemoGenesisCommit(conf, factory, bc, ps)
 
 	// Consensus Run!!
 	go func() {
@@ -71,7 +83,7 @@ func main() {
 	}()
 
 	if err := s.Serve(l); err != nil {
-		fmt.Printf("Failed to server grpc: %s", err.Error())
+		fmt.Println("Failed to server grpc: ", err.Error())
 	}
 
 }

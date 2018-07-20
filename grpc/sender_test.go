@@ -150,7 +150,6 @@ func TestGrpcConsensusSender_Propagate(t *testing.T) {
 	sender := NewGrpcConsensusSender(conf, ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
 
-	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
 	for _, c := range []struct {
 		name   string
 		tx     model.Transaction
@@ -256,7 +255,6 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
 	notLeaderSender := NewGrpcConsensusSender(confs[1], ps)
 
-	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
 	for _, c := range []struct {
 		name     string
 		proposal model.Proposal
@@ -360,7 +358,6 @@ func TestGrpcConsensusSender_Vote(t *testing.T) {
 	sender := NewGrpcConsensusSender(confs[0], ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
 
-	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
 	for _, c := range []struct {
 		name   string
 		vote   model.VoteMessage
@@ -464,7 +461,6 @@ func TestGrpcConsensusSender_PreCommit(t *testing.T) {
 	sender := NewGrpcConsensusSender(confs[0], ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
 
-	fmt.Printf("%x", ps.GetPeers()[0].GetPubkey())
 	for _, c := range []struct {
 		name   string
 		vote   model.VoteMessage

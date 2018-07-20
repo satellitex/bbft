@@ -77,7 +77,7 @@ func AuthParamFromMD(ctx context.Context, header string) (string, error) {
 func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
 	pubStr, err := AuthParamFromMD(ctx, HeaderAuthorizePubkey)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD pubkey: %s", err.Error())
+		fmt.Println("Failed Auth FromMD pubkey: ", err)
 		return nil, err
 	}
 	return []byte(pubStr), nil
@@ -86,7 +86,7 @@ func (a *Author) GetPubkey(ctx context.Context) ([]byte, error) {
 func (a *Author) GetSignature(ctx context.Context) ([]byte, error) {
 	sigStr, err := AuthParamFromMD(ctx, HeaderAuthorizeSignature)
 	if err != nil {
-		fmt.Printf("Failed Auth FromMD signature: %s", err.Error())
+		fmt.Println("Failed Auth FromMD signature: ", err)
 		return nil, err
 	}
 	return []byte(sigStr), nil

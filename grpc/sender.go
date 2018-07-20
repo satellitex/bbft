@@ -39,7 +39,7 @@ func (m *GrpcConnectionManager) GetConnectsToChannel(peers []model.Peer, ret cha
 			ret <- client
 		} else {
 			if err := m.CreateConn(p); err != nil {
-				fmt.Printf("Error Connection to peer: %#v", p)
+				fmt.Println("Error Connection to peer: ", p)
 				return
 			}
 			ret <- m.clients[p.GetAddress()]
@@ -79,7 +79,6 @@ func (s *GrpcConsensusSender) Propagate(tx model.Transaction) error {
 			waiter.Add(1)
 			go func(c bbft.ConsensusGateClient) {
 				if _, err := c.Propagate(ctx, proto.Transaction); err != nil {
-					fmt.Println("Failed Propagate Error : ", err.Error())
 					mutex.Lock()
 					errs = multierr.Append(errs, err)
 					mutex.Unlock()
@@ -118,7 +117,6 @@ func (s *GrpcConsensusSender) Propose(proposal model.Proposal) error {
 			waiter.Add(1)
 			go func(c bbft.ConsensusGateClient) {
 				if _, err := c.Propose(ctx, proto.Proposal); err != nil {
-					fmt.Println("Failed Propose Error : ", err.Error())
 					mutex.Lock()
 					errs = multierr.Append(errs, err)
 					mutex.Unlock()
@@ -156,7 +154,6 @@ func (s *GrpcConsensusSender) Vote(vote model.VoteMessage) error {
 			waiter.Add(1)
 			go func(c bbft.ConsensusGateClient) {
 				if _, err := c.Vote(ctx, proto.VoteMessage); err != nil {
-					fmt.Println("Failed Propose Error : ", err.Error())
 					mutex.Lock()
 					errs = multierr.Append(errs, err)
 					mutex.Unlock()
@@ -194,7 +191,6 @@ func (s *GrpcConsensusSender) PreCommit(vote model.VoteMessage) error {
 			waiter.Add(1)
 			go func(c bbft.ConsensusGateClient) {
 				if _, err := c.PreCommit(ctx, proto.VoteMessage); err != nil {
-					fmt.Println("Failed Propose Error : ", err.Error())
 					mutex.Lock()
 					errs = multierr.Append(errs, err)
 					mutex.Unlock()

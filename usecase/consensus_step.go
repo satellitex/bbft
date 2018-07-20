@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
@@ -197,6 +198,7 @@ func (c *ConsensusStepUsecase) Run() {
 			c.VoteTimeOut = c.ProposeTimeOut + c.conf.VoteMaxCalcTime + c.conf.AllowedConnectDelayTime
 			c.PreCommitTimeOut = c.VoteTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
 			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
+			c.ThisRoundProposal = nil
 
 			log.Println("=============== ProposePhase ===============")
 			if err := c.Propose(height, round); err != nil {
@@ -367,6 +369,6 @@ func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 		return errors.Wrapf(ErrConsensusCommit, err.Error())
 	}
 	c.bc.Commit(block)
-	log.Println("Commited Block: ", model.MustGetHash(block), ", txSize:", len(block.GetTransactions()))
+	log.Println("Commited Block: ", fmt.Sprintf("%x", model.MustGetHash(block)), ", txSize:", len(block.GetTransactions()))
 	return nil
 }

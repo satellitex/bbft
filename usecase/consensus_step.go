@@ -178,13 +178,17 @@ func (c *ConsensusStepUsecase) Run() {
 			panic("Unexpected Error No BlockChain Top")
 		}
 		height, round := top.GetHeader().GetHeight()+1, int32(-1)
-		if height == 0 {
+		if height == 1 {
 			c.RoundStartTime = time.Duration(Now())
 		} else {
 			c.RoundStartTime = time.Duration(top.GetHeader().GetCreatedTime())
 		}
 		fmt.Println("============== Running Consensus!! ============== height:", height)
 		for {
+
+			timer := time.NewTimer(c.RoundStartTime - time.Duration(Now()))
+			<-timer.C
+
 			round++
 			fmt.Println("============== Running Consensus!! ============== round:", round)
 
@@ -194,6 +198,7 @@ func (c *ConsensusStepUsecase) Run() {
 			c.PreCommitTimeOut = c.VoteTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
 			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
 
+			fmt.Println("=============== ProposePhase ===============")
 			if err := c.Propose(height, round); err != nil {
 				fmt.Println("Consensus ProposePhase Error!!",
 					"height:", height,
@@ -201,6 +206,7 @@ func (c *ConsensusStepUsecase) Run() {
 					err)
 			}
 
+			fmt.Println("=============== VotePhase ===============")
 			if err := c.Vote(height, round); err != nil {
 				fmt.Println("Consensus VotePhase Error!!",
 					"height:", height,
@@ -208,6 +214,7 @@ func (c *ConsensusStepUsecase) Run() {
 					err)
 			}
 
+			fmt.Println("=============== PreCommitPhase ===============")
 			if err := c.PreCommit(height, round); err != nil {
 				fmt.Println("Consensus PreCommitPhase Error!!",
 					"height:", height,
@@ -227,6 +234,7 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
 			// Leader is me
+			fmt.Println("ProposePhase : Leader is Me")
 			txs := make([]model.Transaction, 0, c.conf.NumberOfBlockHasTransactions)
 			for len(txs) < c.conf.NumberOfBlockHasTransactions {
 				tx, ok := c.queue.Pop()
@@ -335,7 +343,7 @@ func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 		case propose := <-c.channel.Propose:
 			c.proposalFinder.Set(propose)
 		case <-c.channel.Vote:
-			break
+			continue
 		case preCommit := <-c.channel.PreCommit:
 			c.preCommitFinder.Set(preCommit)
 			if _, ok := c.preCommitFinder.Get(); ok {
@@ -356,5 +364,6 @@ func (c *ConsensusStepUsecase) Commit(height int64, round int32) error {
 		return errors.Wrapf(ErrConsensusCommit, err.Error())
 	}
 	c.bc.Commit(block)
+	fmt.Println("Commited Block: ", block)
 	return nil
 }

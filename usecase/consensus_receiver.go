@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/dba"
@@ -72,18 +73,20 @@ func (c *ConsensusReceieverUsecase) Propagate(tx model.Transaction) error {
 	go func() { // === main calc ===
 		if err := c.queue.Push(tx); err != nil {
 			errs <- errors.Wrapf(dba.ErrProposalTxQueuePush, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.pool.SetPropagate(tx); err != nil {
 			errs <- errors.Wrapf(dba.ErrReceiverPoolSet, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.sender.Propagate(tx); err != nil {
-			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+			fmt.Println(model.ErrConsensusSenderPropagate, err)
 		}
 		errs <- nil
 	}()
@@ -110,18 +113,20 @@ func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {
 	go func() { // === main calc ===
 		if err := c.lock.RegisterProposal(proposal); err != nil {
 			errs <- errors.Wrapf(dba.ErrLockRegisteredProposal, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.pool.SetPropose(proposal); err != nil {
 			errs <- errors.Wrapf(dba.ErrReceiverPoolSet, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.sender.Propose(proposal); err != nil {
-			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+			fmt.Println(model.ErrConsensusSenderPropose, err)
 		}
 		errs <- nil
 	}()
@@ -152,18 +157,20 @@ func (c *ConsensusReceieverUsecase) Vote(vote model.VoteMessage) error {
 	go func() {
 		if err := c.lock.AddVoteMessage(vote); err != nil {
 			errs <- errors.Wrapf(dba.ErrLockAddVoteMessage, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.pool.SetVote(vote); err != nil {
 			errs <- errors.Wrap(dba.ErrReceiverPoolSet, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.sender.Vote(vote); err != nil {
-			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+			fmt.Println(model.ErrConsensusSenderVote, err)
 		}
 		errs <- nil
 	}()
@@ -194,12 +201,13 @@ func (c *ConsensusReceieverUsecase) PreCommit(preCommit model.VoteMessage) error
 	go func() {
 		if err := c.pool.SetPreCommit(preCommit); err != nil {
 			errs <- errors.Wrap(dba.ErrReceiverPoolSet, err.Error())
+		} else {
+			errs <- nil
 		}
-		errs <- nil
 	}()
 	go func() {
 		if err := c.sender.PreCommit(preCommit); err != nil {
-			errs <- errors.Wrapf(model.ErrConsensusSenderPropagate, err.Error())
+			fmt.Println(model.ErrConsensusSenderPreCommit, err)
 		}
 		errs <- nil
 	}()

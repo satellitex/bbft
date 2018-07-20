@@ -7,6 +7,7 @@ services:
     image: satellitex/bbft-server
     ports:
       - 50051:50051
+      - 8081:8080
     environment:
         BBFT_PORT: 50051
         DEMO: demo
@@ -20,6 +21,10 @@ services:
         BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
         BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
         BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+        BBFT_DEMO_HOST1: bbft_1
+        BBFT_DEMO_HOST2: bbft_2
+        BBFT_DEMO_HOST3: bbft_3
+        BBFT_DEMO_HOST4: bbft_4
 
   bbft_2:
     container_name: bbft_2
@@ -27,6 +32,7 @@ services:
     image: satellitex/bbft-server
     ports:
       - 50052:50052
+      - 8082:8080
     environment:
         BBFT_PORT: 50052
         DEMO: demo
@@ -40,6 +46,10 @@ services:
         BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
         BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
         BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+        BBFT_DEMO_HOST1: bbft_1
+        BBFT_DEMO_HOST2: bbft_2
+        BBFT_DEMO_HOST3: bbft_3
+        BBFT_DEMO_HOST4: bbft_4
 
   bbft_3:
     container_name: bbft_3
@@ -47,6 +57,7 @@ services:
     image: satellitex/bbft-server
     ports:
       - 50053:50053
+      - 8083:8080
     environment:
         BBFT_PORT: 50053
         DEMO: demo
@@ -60,6 +71,10 @@ services:
         BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
         BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
         BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+        BBFT_DEMO_HOST1: bbft_1
+        BBFT_DEMO_HOST2: bbft_2
+        BBFT_DEMO_HOST3: bbft_3
+        BBFT_DEMO_HOST4: bbft_4
 
   bbft_4:
     container_name: bbft_4
@@ -67,6 +82,7 @@ services:
     image: satellitex/bbft-server
     ports:
       - 50054:50054
+      - 8084:8080
     environment:
         BBFT_PORT: 50054
         DEMO: demo
@@ -80,3 +96,8 @@ services:
         BBFT_DEMO_PUBKEY2: NSrzbJledhtFuoghrHtkd4epNEp4nP6HUguNIenZ7mg=
         BBFT_DEMO_PUBKEY3: qBTm5RSeNDsVlfU7qzCGcr1jtciz8JH16OuEQrUEOEA=
         BBFT_DEMO_PUBKEY4: dadeKasJDDte9R9dPwLTVf2QnnTfLFu3pjqr6t2IX20=
+        BBFT_DEMO_HOST1: bbft_1
+        BBFT_DEMO_HOST2: bbft_2
+        BBFT_DEMO_HOST3: bbft_3
+        BBFT_DEMO_HOST4: bbft_4
+

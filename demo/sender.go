@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/satellitex/bbft/config"
 	"github.com/satellitex/bbft/convertor"
@@ -11,7 +12,6 @@ import (
 	"google.golang.org/grpc"
 	"math/rand"
 	"time"
-	"encoding/base64"
 )
 
 func NewTxGateClient(conf *config.BBFTConfig) bbft.TxGateClient {

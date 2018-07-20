@@ -198,6 +198,7 @@ func (c *ConsensusStepUsecase) Run() {
 			c.PreCommitTimeOut = c.VoteTimeOut + c.conf.PreCommitMaxCalcTime + c.conf.AllowedConnectDelayTime
 			c.RoundCommitTime = c.PreCommitTimeOut + c.conf.CommitMaxCalcTime
 
+			fmt.Println("=============== ProposePhase ===============")
 			if err := c.Propose(height, round); err != nil {
 				fmt.Println("Consensus ProposePhase Error!!",
 					"height:", height,
@@ -205,6 +206,7 @@ func (c *ConsensusStepUsecase) Run() {
 					err)
 			}
 
+			fmt.Println("=============== VotePhase ===============")
 			if err := c.Vote(height, round); err != nil {
 				fmt.Println("Consensus VotePhase Error!!",
 					"height:", height,
@@ -212,6 +214,7 @@ func (c *ConsensusStepUsecase) Run() {
 					err)
 			}
 
+			fmt.Println("=============== PreCommitPhase ===============")
 			if err := c.PreCommit(height, round); err != nil {
 				fmt.Println("Consensus PreCommitPhase Error!!",
 					"height:", height,
@@ -231,6 +234,7 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if bytes.Equal(c.ps.GetPermutationPeers(height)[round].GetPubkey(), c.conf.PublicKey) {
 			// Leader is me
+			fmt.Println("ProposePhase : Leader is Me")
 			txs := make([]model.Transaction, 0, c.conf.NumberOfBlockHasTransactions)
 			for len(txs) < c.conf.NumberOfBlockHasTransactions {
 				tx, ok := c.queue.Pop()

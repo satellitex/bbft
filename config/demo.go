@@ -11,4 +11,8 @@ type Demo struct {
 	Pubkey2   string
 	Pubkey3   string
 	Pubkey4   string
+	Host1     string
+	Host2     string
+	Host3     string
+	Host4     string
 }

@@ -35,10 +35,10 @@ func DemoGenesisCommit(conf *config.BBFTConfig, factory model.ModelFactory, bc d
 	conf.PublicKey = DecodeString64(conf.Demo.PublicKey)
 	conf.SecretKey = DecodeString64(conf.Demo.SecretKey)
 
-	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port1, DecodeString64(conf.Demo.Pubkey1)))
-	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port2, DecodeString64(conf.Demo.Pubkey2)))
-	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port3, DecodeString64(conf.Demo.Pubkey3)))
-	ps.AddPeer(factory.NewPeer(conf.Host+":"+conf.Demo.Port4, DecodeString64(conf.Demo.Pubkey4)))
+	ps.AddPeer(factory.NewPeer(conf.Demo.Host1+":"+conf.Demo.Port1, DecodeString64(conf.Demo.Pubkey1)))
+	ps.AddPeer(factory.NewPeer(conf.Demo.Host2+":"+conf.Demo.Port2, DecodeString64(conf.Demo.Pubkey2)))
+	ps.AddPeer(factory.NewPeer(conf.Demo.Host3+":"+conf.Demo.Port3, DecodeString64(conf.Demo.Pubkey3)))
+	ps.AddPeer(factory.NewPeer(conf.Demo.Host4+":"+conf.Demo.Port4, DecodeString64(conf.Demo.Pubkey4)))
 
 	genesisBlock, err := factory.NewBlock(0, nil, 0, nil)
 	if err != nil {
@@ -111,7 +111,7 @@ func main() {
 	consensus := usecase.NewConsensusStepUsecase(conf, bc, ps, lock, queue, sender, slv, sfv, factory, receivChan)
 
 	if os.Getenv("DEMO") != "" {
-		time.Sleep(time.Second*2)
+		time.Sleep(time.Second * 2)
 		DemoGenesisCommit(conf, factory, bc, ps)
 	} else {
 		OnceNodeGenesis(conf, factory, bc, ps)

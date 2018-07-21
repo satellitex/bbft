@@ -20,8 +20,8 @@ type BBFTConfig struct {
 	PreCommitFinderLimits                 int `default:"500"`
 
 	// Consensus Parameter
-	NumberOfBlockHasTransactions int           `default:"1000"`
-	AllowedConnectDelayTime      time.Duration `default:"100ms"`
+	NumberOfBlockHasTransactions int           `default:"200"`
+	AllowedConnectDelayTime      time.Duration `default:"500ms"`
 	ProposeMaxCalcTime           time.Duration `default:"500ms"`
 	VoteMaxCalcTime              time.Duration `default:"1s"`
 	PreCommitMaxCalcTime         time.Duration `default:"200ms"`

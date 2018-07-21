@@ -18,6 +18,15 @@ func RandomProposalWithHeightRound(t *testing.T, height int64, round int32) mode
 	return proposal
 }
 
+func RandomProposalWithPeer(t *testing.T, height int64, round int32, peer model.Peer) model.Proposal {
+	block, err := convertor.NewModelFactory().NewBlock(height, RandomByte(), rand.Int63(), RandomValidTxs(t))
+	require.NoError(t, err)
+	block.Sign(peer.(*PeerWithPriv).Pubkey, peer.(*PeerWithPriv).PrivKey)
+	proposal, err := convertor.NewModelFactory().NewProposal(block, round)
+	require.NoError(t, err)
+	return proposal
+}
+
 func TimeParseDuration(t *testing.T, s string) time.Duration {
 	d, err := time.ParseDuration(s)
 	require.NoError(t, err)

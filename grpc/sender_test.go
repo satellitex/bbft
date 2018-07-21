@@ -220,8 +220,10 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 	}()
 	require.NotEqual(t, -1, leaderId)
 
-	validProposal := RandomProposalWithHeightRound(t, 1, leaderId)
-	invalidProposal := RandomInvalidProposal(t)
+	leader := ps.GetPermutationPeers(1)[leaderId]
+	validProposal := RandomProposalWithPeer(t, 1, leaderId, leader)
+	unLeaderSignedProposal := RandomProposalWithHeightRound(t, 1, leaderId)
+	invalidProposal := RandomInvalidProposalWithRound(t, 1, leaderId)
 
 	evilConf := *confs[0]
 	pk, sk := convertor.NewKeyPair()
@@ -258,6 +260,13 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 			validProposal,
 			notLeaderSender,
 			codes.PermissionDenied,
+			nil,
+		},
+		{
+			"failed case, authenticated but not leader proposal",
+			unLeaderSignedProposal,
+			sender,
+			codes.InvalidArgument,
 			nil,
 		},
 		{

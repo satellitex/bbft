@@ -41,6 +41,15 @@ func RandomInvalidProposal(t *testing.T) model.Proposal {
 	return proposal
 }
 
+func RandomInvalidProposalWithRound(t *testing.T, height int64, round int32) model.Proposal {
+	block, err := convertor.NewModelFactory().NewBlock(height, RandomByte(), rand.Int63(), RandomInvalidTxs(t))
+	require.NoError(t, err)
+	ValidSign(t, block)
+	proposal, err := convertor.NewModelFactory().NewProposal(block, round)
+	require.NoError(t, err)
+	return proposal
+}
+
 func RandomVoteMessage(t *testing.T) model.VoteMessage {
 	vote := convertor.NewModelFactory().NewVoteMessage(RandomByte())
 	ValidSign(t, vote)

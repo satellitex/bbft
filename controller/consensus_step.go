@@ -50,11 +50,6 @@ func (c *ConsensusController) Propose(ctx context.Context, p *bbft.Proposal) (*b
 	}
 
 	proposal := &convertor.Proposal{p}
-	ctx, err = c.author.VerifyOnlyLeader(ctx, proposal)
-	if err != nil { // PermissionDenied ( code = 7 )
-		return nil, err
-	}
-
 	err = c.receiver.Propose(proposal)
 	if err != nil {
 		cause := errors.Cause(err)

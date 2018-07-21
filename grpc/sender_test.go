@@ -232,7 +232,6 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 
 	sender := NewGrpcConsensusSender(confs[0], ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
-	notLeaderSender := NewGrpcConsensusSender(confs[1], ps)
 
 	for _, c := range []struct {
 		name     string
@@ -252,13 +251,6 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 			"failed case, authenticated but not peer",
 			validProposal,
 			evilSender,
-			codes.PermissionDenied,
-			nil,
-		},
-		{
-			"failed case, authenticated but not leader",
-			validProposal,
-			notLeaderSender,
 			codes.PermissionDenied,
 			nil,
 		},

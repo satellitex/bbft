@@ -298,6 +298,7 @@ func (c *ConsensusStepUsecase) Propose(height int64, round int32) error {
 func (c *ConsensusStepUsecase) Vote(height int64, round int32) error {
 	if _, ok := c.lock.GetLockedProposal(height); !ok {
 		if c.ThisRoundProposal != nil {
+			log.Println("ThisRoundPropsoal: ", fmt.Sprintf("%x", model.MustGetHash(c.ThisRoundProposal.GetBlock())))
 			if err := c.slv.BlockValidate(c.ThisRoundProposal.GetBlock()); err != nil {
 				log.Printf("Height: %d, Round: %d, proposal StatelessInvalid: %s\n", height, round, err.Error())
 			} else if err := c.sfv.Validate(c.ThisRoundProposal.GetBlock()); err != nil {
@@ -334,6 +335,7 @@ func (c *ConsensusStepUsecase) Vote(height int64, round int32) error {
 
 func (c *ConsensusStepUsecase) PreCommit(height int64, round int32) error {
 	if proposal, ok := c.lock.GetLockedProposal(height); ok {
+		log.Println("ThisRoundPropsoal: ", fmt.Sprintf("%x", model.MustGetHash(proposal.GetBlock())))
 		vote := c.factory.NewVoteMessage(model.MustGetHash(proposal.GetBlock()))
 		vote.Sign(c.conf.PublicKey, c.conf.SecretKey)
 		if err := c.sender.PreCommit(vote); err != nil {

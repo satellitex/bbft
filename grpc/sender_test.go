@@ -256,13 +256,6 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 			nil,
 		},
 		{
-			"failed case, authenticated but not leader",
-			validProposal,
-			notLeaderSender,
-			codes.PermissionDenied,
-			nil,
-		},
-		{
 			"failed case, authenticated but not leader proposal",
 			unLeaderSignedProposal,
 			sender,

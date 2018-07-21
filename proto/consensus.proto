@@ -33,7 +33,7 @@ service ConsensusGate {
      * AlreadyExist (code = 6) : One of following conditions:
      *  1 ) 既に同じ Transaction を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
-     *  1 ) 署名の主がPeerでない場合
+     *  1 ) Context の 署名の主がPeerでない場合
      **/
     rpc Propagate (Transaction) returns (ConsensusResponse);
 
@@ -43,10 +43,11 @@ service ConsensusGate {
      *
      * InvalidArgument (code = 3) : One of following conditions:
      *  1 ) Block が StatelessValidator で落ちる場合
+     *  1 ) Block の署名の主が現在のRoundのリーダーでない場合
      * AlreadyExist (code = 6) : One of following conditions:
      *  1 ) 既に同じ Block を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
-     *  1 ) 署名の主が現在のRoundのリーダーでない場合
+     * 1 ) Context の 署名の主がPeerでない場合
      **/
     rpc Propose (Proposal) returns (ConsensusResponse);
 
@@ -62,7 +63,7 @@ service ConsensusGate {
      * AlreadyExist (code = 6) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      * PermissionDenied (code = 7) : One of following conditions:
-     *  1 ) 署名の主が合意形成に参加している Peer でない場合
+     *  1 ) Context の署名の主が合意形成に参加している Peer でない場合
      **/
     rpc Vote (VoteMessage) returns (ConsensusResponse);
 
@@ -75,7 +76,7 @@ service ConsensusGate {
      * InvalidArgument (code = 3) : One of following conditions:
      *  1 ) 署名が異なる場合
      * PermissionDenied (code = 7) : One of following conditions:
-     *  1 ) 署名の主が合意形成に参加している Peer でない場合
+     *  1 ) Context の署名の主が合意形成に参加している Peer でない場合
      * FailedPrecondition (code = 9) : One of following conditions:
      *  1 ) 既に同じ Vote を受け取っていた場合
      **/

@@ -36,7 +36,7 @@ func NewTestConsensusController(t *testing.T) (*config.BBFTConfig, dba.PeerServi
 	author := convertor.NewAuthor(ps)
 
 	// add peer this peer
-	ps.AddPeer(convertor.NewModelFactory().NewPeer(testConfig.Host, testConfig.PublicKey))
+	ps.AddPeer(RandomPeerFromConf(testConfig))
 
 	return testConfig, ps, NewConsensusController(receiver, author)
 
@@ -123,9 +123,10 @@ func TestConsensusController_Propose(t *testing.T) {
 	}()
 	require.NotEqual(t, -1, leaderId)
 
-	validProposal := RandomProposalWithHeightRound(t, 1, leaderId).(*convertor.Proposal).Proposal
+	leader := ps.GetPermutationPeers(1)[leaderId]
+	validProposal := RandomProposalWithPeer(t, 1, leaderId, leader).(*convertor.Proposal).Proposal
 	unLeaderProposal := RandomProposalWithHeightRound(t, 1, (leaderId+1)%2).(*convertor.Proposal).Proposal
-	invalidProposal := RandomInvalidProposal(t).(*convertor.Proposal).Proposal
+	invalidProposal := RandomInvalidProposalWithRound(t, 1, leaderId).(*convertor.Proposal).Proposal
 
 	evilConf := *conf
 	pk, sk := convertor.NewKeyPair()

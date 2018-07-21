@@ -135,9 +135,9 @@ func (a *Author) VerifyOnlyLeader(ctx context.Context, proposal model.Proposal) 
 		if err != nil {
 			return ctx, err
 		}
-		if !bytes.Equal(actPubkey, expPubkey) {
-			return ctx, status.Errorf(codes.PermissionDenied, "not signed by leader Peer when height: %d, round: %d", height, round)
+		if bytes.Equal(actPubkey, expPubkey) {
+			return ctx, nil
 		}
 	}
-	return ctx, nil
+	return ctx, status.Errorf(codes.PermissionDenied, "not signed by leader Peer when height: %d, round: %d", height, round)
 }

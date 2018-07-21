@@ -135,7 +135,7 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 				err := receiver.Propose(RandomProposalWithPeer(t, i, 0, peer))
 				assert.NoError(t, err)
 				waiter.Done()
-			}(int64(i+2))
+			}(int64(i + 2))
 			go func() {
 				<-channel.Propose
 			}()

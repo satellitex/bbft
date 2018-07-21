@@ -232,7 +232,6 @@ func TestGrpcConsensusSender_Propose(t *testing.T) {
 
 	sender := NewGrpcConsensusSender(confs[0], ps)
 	evilSender := NewGrpcConsensusSender(&evilConf, ps)
-	notLeaderSender := NewGrpcConsensusSender(confs[1], ps)
 
 	for _, c := range []struct {
 		name     string

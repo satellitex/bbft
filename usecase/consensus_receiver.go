@@ -103,11 +103,11 @@ func (c *ConsensusReceieverUsecase) verifyOnlyLeader(proposal model.Proposal) er
 	round := proposal.GetRound()
 	peers := c.ps.GetPermutationPeers(height)
 	if 0 <= round && round < int32(len(peers)) {
-		if !bytes.Equal(peers[round].GetPubkey(), proposal.GetBlock().GetSignature().GetPubkey()) {
-			return errors.New("not leader peer's signed")
+		if bytes.Equal(peers[round].GetPubkey(), proposal.GetBlock().GetSignature().GetPubkey()) {
+			return nil
 		}
 	}
-	return nil
+	return errors.New("not leader peer's signed")
 }
 
 func (c *ConsensusReceieverUsecase) Propose(proposal model.Proposal) error {

@@ -18,6 +18,14 @@ func testPeerService(t *testing.T, p PeerService) {
 		RandomPeer(),
 	}
 
+	t.Run("empty peerService, test", func(t *testing.T) {
+		peers := p.GetPeers()
+		assert.Empty(t, peers)
+
+		peers = p.GetPermutationPeers(0)
+		assert.Empty(t, peers)
+	})
+
 	t.Run("test Add And Get", func(t *testing.T) {
 		for cnt, peer := range peers {
 			assert.Equal(t, cnt, p.Size())

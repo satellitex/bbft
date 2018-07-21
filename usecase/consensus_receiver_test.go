@@ -85,11 +85,15 @@ func TestConsensusReceieverUsecase_Propagate(t *testing.T) {
 }
 
 func TestConsensusReceieverUsecase_Propose(t *testing.T) {
-	_, _, _, _, sender, channel, receiver := NewTestConsensusReceiverUsecase()
+	_, ps, _, _, sender, channel, receiver := NewTestConsensusReceiverUsecase()
+
+	peer := RandomPeerWithPriv()
+	ps.AddPeer(peer)
+
 	t.Run("success case", func(t *testing.T) {
-		proposal := RandomProposalWithHeightRound(t, 0, 0)
+		proposal := RandomProposalWithPeer(t, 0, 0, peer)
 		err := receiver.Propose(proposal)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, proposal, sender.(*convertor.MockConsensusSender).Proposal)
 		assert.Equal(t, proposal, <-channel.Propose)
 	})
@@ -107,8 +111,14 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 		assert.EqualError(t, errors.Cause(err), model.ErrStatelessBlockValidate.Error())
 	})
 
+	t.Run("failed case not leader signed", func(t *testing.T) {
+		proposal := RandomProposalWithHeightRound(t, 0, 0)
+		err := receiver.Propose(proposal)
+		assert.EqualError(t, errors.Cause(err), ErrVerifyOnlyLeader.Error())
+	})
+
 	t.Run("failed case already exist", func(t *testing.T) {
-		proposal := RandomProposal(t)
+		proposal := RandomProposalWithPeer(t, 1, 0, peer)
 		err := receiver.Propose(proposal)
 		require.NoError(t, err)
 		require.Equal(t, proposal, <-channel.Propose)
@@ -117,17 +127,15 @@ func TestConsensusReceieverUsecase_Propose(t *testing.T) {
 		assert.EqualError(t, errors.Cause(err), ErrAlradyReceivedSameObject.Error())
 	})
 
-	// TODO test fialed not leader pubkey
-
 	t.Run("DoS safety test", func(t *testing.T) {
 		waiter := &sync.WaitGroup{}
 		for i := 0; i < GetTestConfig().ReceiveProposeProposalPoolLimits*2; i++ {
 			waiter.Add(1)
-			go func() {
-				err := receiver.Propose(RandomProposal(t))
+			go func(i int64) {
+				err := receiver.Propose(RandomProposalWithPeer(t, i, 0, peer))
 				assert.NoError(t, err)
 				waiter.Done()
-			}()
+			}(int64(i+2))
 			go func() {
 				<-channel.Propose
 			}()

@@ -59,7 +59,8 @@ func (c *ConsensusController) Propose(ctx context.Context, p *bbft.Proposal) (*b
 	if err != nil {
 		cause := errors.Cause(err)
 		if cause == model.ErrInvalidProposal ||
-			cause == model.ErrStatelessBlockValidate {
+			cause == model.ErrStatelessBlockValidate ||
+			cause == usecase.ErrVerifyOnlyLeader {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		} else if cause == usecase.ErrAlradyReceivedSameObject {
 			return nil, status.Error(codes.AlreadyExists, err.Error())

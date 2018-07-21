@@ -45,7 +45,7 @@ func RandomInvalidProposalWithRound(t *testing.T, height int64, round int32) mod
 	block, err := convertor.NewModelFactory().NewBlock(height, RandomByte(), rand.Int63(), RandomInvalidTxs(t))
 	require.NoError(t, err)
 	ValidSign(t, block)
-	proposal, err := convertor.NewModelFactory().NewProposal(InvalidSingedBlock(t), round)
+	proposal, err := convertor.NewModelFactory().NewProposal(block, round)
 	require.NoError(t, err)
 	return proposal
 }

@@ -125,7 +125,7 @@ func TestConsensusController_Propose(t *testing.T) {
 
 	leader := ps.GetPermutationPeers(1)[leaderId]
 	validProposal := RandomProposalWithPeer(t, 1, leaderId, leader).(*convertor.Proposal).Proposal
-	unLeaderProposal := RandomProposalWithHeightRound(t, 1, (leaderId+1)%2).(*convertor.Proposal).Proposal
+	unLeaderProposal := RandomProposalWithHeightRound(t, 1, leaderId).(*convertor.Proposal).Proposal
 	invalidProposal := RandomInvalidProposalWithRound(t, 1, leaderId).(*convertor.Proposal).Proposal
 
 	evilConf := *conf
@@ -158,10 +158,10 @@ func TestConsensusController_Propose(t *testing.T) {
 			codes.PermissionDenied,
 		},
 		{
-			"failed case, authenticated and peer but not leader",
+			"failed case, authenticated and peer but not leader proposal",
 			ValidContext(t, conf, unLeaderProposal),
 			unLeaderProposal,
-			codes.PermissionDenied,
+			codes.InvalidArgument,
 		},
 		{
 			"failed case, invalid Proposal",
